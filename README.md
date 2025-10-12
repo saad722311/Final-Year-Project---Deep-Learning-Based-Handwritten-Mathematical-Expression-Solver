@@ -14,7 +14,7 @@ Development of a deep learning application for recognizing and solving handwritt
 - [`03-development/`](./03-development/) - Implementation and code
 - [`04-documentation/`](./04-documentation/) - Project documentation
 - [`05-evaluation/`](./05-evaluation/) - Testing and evaluation results
-- [`05-meetings/`](./06-evaluation/) - Meetings summary
+- [`06-meetings/`](./06-meetings/) - Meetings summary
 
 ## Key Milestones
 - **Week 3 (22/09/2025):** Project meetings and management start (D4)
