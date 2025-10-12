@@ -26,4 +26,4 @@ Development of a deep learning application for recognizing and solving handwritt
 
 Project meetings and management start (D4)
 
-Last Updated: 2025-09-24
+Last Updated: 2025-10-12
