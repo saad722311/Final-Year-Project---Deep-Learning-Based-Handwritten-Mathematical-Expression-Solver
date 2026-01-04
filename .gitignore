@@ -1,0 +1,13 @@
+# macOS junk
+.DS_Store
+
+# Ignore all dataset contents by default
+03-development/datasets/**
+
+# Re-allow dataset directory structure
+!03-development/datasets/
+!03-development/datasets/**/
+
+# Keep preprocessing scripts tracked
+!03-development/datasets/**/scripts/
+!03-development/datasets/**/scripts/**
