@@ -11,3 +11,7 @@
 # Keep preprocessing scripts tracked
 !03-development/datasets/**/scripts/
 !03-development/datasets/**/scripts/**
+
+# Python cache
+__pycache__/
+*.pyc
