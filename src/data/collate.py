@@ -41,3 +41,14 @@ def collate_batch(batch: List[Dict], pad_id: int) -> Dict:
         "labels": [b["label_str"] for b in batch],
         "filenames": [b["filename"] for b in batch],
     }
+
+class HMERBatchCollator:
+    """
+    Picklable collator wrapper so DataLoader can use num_workers > 0 on macOS.
+    Avoids lambda / nested functions (which are not picklable with spawn).
+    """
+    def __init__(self, pad_id: int):
+        self.pad_id = pad_id
+
+    def __call__(self, batch):
+        return collate_batch(batch, pad_id=self.pad_id)

@@ -1,6 +1,7 @@
 # src/data/tokenizer.py
 from __future__ import annotations
 
+import csv
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -74,6 +75,50 @@ class CharTokenizer:
         itos = SPECIAL_TOKENS + chars
         stoi = {tok: i for i, tok in enumerate(itos)}
         return CharTokenizer(stoi=stoi, itos=itos)
+
+    @staticmethod
+    def build_from_labels_csv(
+        csv_path: str | Path,
+        text_col: str = "label",
+        min_freq: int = 1,
+    ) -> "CharTokenizer":
+        """
+        Build tokenizer vocab from a labels CSV.
+
+        Expected schema (your processed datasets):
+          filename,label
+
+        Args:
+            csv_path: path to train_labels.csv
+            text_col: column that contains LaTeX string (default: "label")
+            min_freq: min frequency for a char to be included
+
+        Returns:
+            CharTokenizer
+        """
+        csv_path = Path(csv_path)
+        if not csv_path.exists():
+            raise FileNotFoundError(f"CSV not found: {csv_path}")
+
+        texts: List[str] = []
+        with csv_path.open("r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            if reader.fieldnames is None:
+                raise ValueError(f"CSV has no header: {csv_path}")
+            if text_col not in reader.fieldnames:
+                raise ValueError(
+                    f"Column '{text_col}' not found in {csv_path}. Found columns: {reader.fieldnames}"
+                )
+
+            for row in reader:
+                t = (row.get(text_col) or "").strip()
+                if t:
+                    texts.append(t)
+
+        if not texts:
+            raise ValueError(f"No labels found in CSV: {csv_path}")
+
+        return CharTokenizer.build_from_texts(texts=texts, min_freq=min_freq)
 
     def save(self, path: str | Path) -> None:
         path = Path(path)
