@@ -5,6 +5,7 @@ import argparse
 import csv
 import time
 from pathlib import Path
+from xml.parsers.expat import model
 
 import torch
 import torch.nn as nn
@@ -58,11 +59,12 @@ def run_epoch(
             break
 
         images = batch["images"].to(device)
+        image_widths = batch["image_widths"].to(device)  # ✅ NEW
         input_ids = batch["input_ids"].to(device)
         target_ids = batch["target_ids"].to(device)
 
-        # Forward -> logits
-        logits = model(images=images, input_ids=input_ids)  # (B, L, V)
+        # Forward -> logits (pass widths so encoder can build memory_mask)
+        logits = model(images=images, input_ids=input_ids, image_widths=image_widths)  # ✅ UPDATED
 
         # Cross entropy: ignore padding
         loss = nn.functional.cross_entropy(
@@ -167,13 +169,14 @@ def main():
         persistent_workers=(nw > 0),
     )
 
-    # -------------------
-    # Model (build exactly like smoke test)
-    # -------------------
     model = HMERModel(
-        vocab_size=tokenizer.vocab_size,
-        pad_id=pad_id,
-    ).to(device)
+    vocab_size=tokenizer.vocab_size,
+    pad_id=tokenizer.pad_id,
+    sos_id=tokenizer.sos_id,
+    eos_id=tokenizer.eos_id,
+    encoder_d_model=int(cfg["model"]["d_model"]),
+    decoder_hidden=int(cfg["model"]["hidden_size"]),
+).to(device)
 
     optimizer = torch.optim.AdamW(
         model.parameters(),

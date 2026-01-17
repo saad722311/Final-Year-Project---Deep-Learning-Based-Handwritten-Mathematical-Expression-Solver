@@ -15,9 +15,19 @@ def pad_1d(seqs: List[torch.Tensor], pad_value: int) -> torch.Tensor:
 
 
 def collate_batch(batch: List[Dict], pad_id: int) -> Dict:
-    # Images: (1,H,W) but W may vary; we will pad width to max in batch (important)
+    """
+    Pads:
+      - images along width to max in batch
+      - token sequences along length to max in batch
+
+    Also returns:
+      - image_widths: true widths BEFORE padding (needed for encoder memory mask)
+    """
+    # Images: (1,H,W) but W may vary; pad width to max in batch
     images = [b["image"] for b in batch]
-    max_w = max(im.size(-1) for im in images)
+    image_widths = torch.tensor([im.size(-1) for im in images], dtype=torch.long)
+
+    max_w = int(image_widths.max().item())
     h = images[0].size(-2)
 
     padded_images = torch.zeros((len(images), 1, h, max_w), dtype=images[0].dtype)
@@ -28,24 +38,28 @@ def collate_batch(batch: List[Dict], pad_id: int) -> Dict:
     input_ids = pad_1d([b["input_ids"] for b in batch], pad_value=pad_id)
     target_ids = pad_1d([b["target_ids"] for b in batch], pad_value=pad_id)
 
-    # lengths help later (for masking/metrics)
+    # lengths help later (masking/metrics)
     input_lens = torch.tensor([b["input_ids"].size(0) for b in batch], dtype=torch.long)
     target_lens = torch.tensor([b["target_ids"].size(0) for b in batch], dtype=torch.long)
 
     return {
         "images": padded_images,          # (B,1,H,Wmax)
+        "image_widths": image_widths,     # (B,) true widths before padding
+
         "input_ids": input_ids,           # (B,L)
         "target_ids": target_ids,         # (B,L)
         "input_lens": input_lens,
         "target_lens": target_lens,
+
         "labels": [b["label_str"] for b in batch],
         "filenames": [b["filename"] for b in batch],
     }
 
+
 class HMERBatchCollator:
     """
     Picklable collator wrapper so DataLoader can use num_workers > 0 on macOS.
-    Avoids lambda / nested functions (which are not picklable with spawn).
+    Avoids lambda / nested functions (not picklable under spawn).
     """
     def __init__(self, pad_id: int):
         self.pad_id = pad_id

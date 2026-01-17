@@ -1,0 +1,33 @@
+run:
+  name: "crohme_cnn_lstm_full_1024"
+  output_dir: "results"
+
+seed: 42
+
+data:
+  processed_dir: "03-development/datasets/TC11_CROHME23/processed"
+  train_split: "train"
+  valid_split: "valid"
+  batch_size: 8
+  num_workers: 0
+  max_width: 1024
+  target_height: 128
+  invert: false
+
+tokenizer:
+  max_vocab: null
+
+model:
+  type: "cnn_lstm"
+  d_model: 256
+  hidden_size: 256
+  attn_dim: 256
+  dropout: 0.1
+
+train:
+  epochs: 25
+  lr: 0.0003
+  weight_decay: 0.0
+  grad_clip: 1.0
+  max_batches_per_epoch: null
+  device: "auto"

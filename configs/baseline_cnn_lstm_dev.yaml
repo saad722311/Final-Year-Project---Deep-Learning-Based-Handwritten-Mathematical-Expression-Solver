@@ -1,5 +1,5 @@
 run:
-  name: "crohme_cnn_lstm_baseline"
+  name: "crohme_cnn_lstm_dev_512"
   output_dir: "results"
 
 seed: 42
@@ -8,14 +8,13 @@ data:
   processed_dir: "03-development/datasets/TC11_CROHME23/processed"
   train_split: "train"
   valid_split: "valid"
-  batch_size: 8
-  num_workers: 2
-  max_width: 1024
+  batch_size: 12
+  num_workers: 0
+  max_width: 512
   target_height: 128
   invert: false
 
 tokenizer:
-  # builds vocab from train labels
   max_vocab: null
 
 model:
@@ -26,9 +25,9 @@ model:
   dropout: 0.1
 
 train:
-  epochs: 5
+  epochs: 15
   lr: 0.0003
   weight_decay: 0.0
   grad_clip: 1.0
-  max_batches_per_epoch: 50   # keep small for Day 4 sanity; set null later for full training
-  device: "auto"              # auto / cpu / cuda / mps
+  max_batches_per_epoch: 200
+  device: "auto"
