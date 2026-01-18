@@ -6,7 +6,6 @@ import re
 from pathlib import Path
 
 import torch
-import torch.nn.functional as F
 from torch.utils.data import DataLoader
 import yaml
 
@@ -56,17 +55,13 @@ def load_checkpoint(model: torch.nn.Module, ckpt_path: Path, device: torch.devic
 # -----------------------
 _WS = re.compile(r"\s+")
 
-def normalize_latex(s: str) -> str:
-    """Very lightweight canonicalization (enough to stop EM being 0 due to spaces/$)."""
-    s = s.strip()
 
-    # remove outer $...$ if present
+def normalize_latex(s: str) -> str:
+    """Light canonicalization (avoid EM=0 due to spaces/$)."""
+    s = s.strip()
     if len(s) >= 2 and s[0] == "$" and s[-1] == "$":
         s = s[1:-1].strip()
-
-    # remove all whitespace
     s = _WS.sub("", s)
-
     return s
 
 
@@ -106,6 +101,15 @@ def main():
     ap.add_argument("--max_eval", type=int, default=None)
     ap.add_argument("--print_every", type=int, default=50)
 
+    # ✅ NEW: decoding controls
+    ap.add_argument("--decode", type=str, default="greedy", choices=["greedy", "beam"])
+    ap.add_argument("--beam_size", type=int, default=5)
+    ap.add_argument("--alpha", type=float, default=0.6)
+    ap.add_argument("--min_len", type=int, default=1)
+    ap.add_argument("--repetition_penalty", type=float, default=1.10)
+    ap.add_argument("--no_repeat_ngram_size", type=int, default=3)
+    ap.add_argument("--forbid_unk", action="store_true", help="Forbid UNK during decoding (recommended)")
+
     ap.add_argument("--no_teacher_metrics", action="store_true", help="Skip teacher-forcing token acc (debug only)")
     args = ap.parse_args()
 
@@ -127,13 +131,14 @@ def main():
     tf_cfg = ImageTransformConfig(
         target_height=int(cfg["data"]["target_height"]),
         max_width=int(cfg["data"]["max_width"]),
-        invert=bool(cfg["data"]["invert"]),
+        invert=bool(cfg["data"].get("invert", False)),
     )
 
     ds = CROHMEProcessedDataset(
         cfg=CROHMEProcessedConfig(processed_dir=str(processed_dir), split=split),
         tokenizer=tokenizer,
         img_tf_cfg=tf_cfg,
+        debug_print=False,
     )
 
     bs = int(cfg["data"]["batch_size"])
@@ -154,6 +159,7 @@ def main():
         pad_id=tokenizer.pad_id,
         sos_id=tokenizer.sos_id,
         eos_id=tokenizer.eos_id,
+        unk_id=tokenizer.unk_id,  # ✅ IMPORTANT
         encoder_d_model=int(cfg["model"]["d_model"]),
         decoder_hidden=int(cfg["model"]["hidden_size"]),
     ).to(device)
@@ -163,9 +169,6 @@ def main():
     print(f"Loaded checkpoint: {ckpt_path}")
     model.eval()
 
-    # -------------------
-    # Loop
-    # -------------------
     lines: list[str] = []
     printed = 0
 
@@ -188,17 +191,28 @@ def main():
         gts = batch["labels"]
         filenames = batch["filenames"]
 
-        # --- Teacher-forcing token accuracy (FAST)
+        # Teacher-forcing token accuracy (FAST)
         if not args.no_teacher_metrics:
             logits = model(images=images, input_ids=input_ids, image_widths=image_widths)  # (B,L,V)
             c, t = token_accuracy_from_logits(logits, target_ids, pad_id=tokenizer.pad_id)
             tok_correct += c
             tok_total += t
 
-        # --- Greedy decode (SLOWER, but needed for EM)
-        pred_ids = model.generate(images, image_widths=image_widths, max_len=args.max_len)
+        # ✅ Decode (greedy or beam)
+        pred_ids = model.generate(
+            images,
+            image_widths=image_widths,
+            max_len=args.max_len,
+            decode=args.decode,
+            beam_size=args.beam_size,
+            alpha=args.alpha,
+            min_len=args.min_len,
+            repetition_penalty=args.repetition_penalty,
+            no_repeat_ngram_size=args.no_repeat_ngram_size,
+            forbid_unk=bool(args.forbid_unk),
+        )
         pred_ids_list = pred_ids.detach().cpu().tolist()
-        preds = [tokenizer.decode(ids, remove_special=True) for ids in pred_ids_list]
+        preds = [tokenizer.decode(ids, remove_special=True, stop_at_eos=True) for ids in pred_ids_list]
 
         if args.eval_all:
             em_correct += count_exact(gts, preds)
@@ -214,7 +228,6 @@ def main():
                 ta = 100.0 * tok_correct / max(1, tok_total) if tok_total > 0 else 0.0
                 print(f"[eval] batches={batch_idx+1} samples={total_samples} EM={em:.2f}% nEM={nem:.2f}% tokAcc={ta:.2f}%")
 
-        # Print samples
         for i in range(len(gts)):
             if printed >= args.num_samples:
                 break

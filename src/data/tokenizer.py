@@ -5,7 +5,7 @@ import csv
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 
 SPECIAL_TOKENS = ["<PAD>", "<SOS>", "<EOS>", "<UNK>"]
@@ -19,7 +19,10 @@ class TokenizerConfig:
 class CharTokenizer:
     """
     Character-level tokenizer for LaTeX strings.
-    - Good baseline: simple, debuggable, works on any LaTeX without special rules.
+
+    Notes:
+    - encode() includes <SOS> and <EOS> if config.add_sos_eos=True.
+    - decode() can optionally stop at EOS (VERY useful for exact-match evaluation).
     """
 
     def __init__(self, stoi: Dict[str, int], itos: List[str], config: TokenizerConfig | None = None):
@@ -49,28 +52,47 @@ class CharTokenizer:
             ids.append(self.eos_id)
         return ids
 
-    def decode(self, ids: List[int], remove_special: bool = True) -> str:
+    def decode(
+        self,
+        ids: List[int],
+        remove_special: bool = True,
+        stop_at_eos: bool = False,
+    ) -> str:
+        """
+        Args:
+            ids: list of token ids
+            remove_special: remove PAD/SOS/EOS from output text
+            stop_at_eos: if True, stop decoding when EOS is encountered (recommended for EM)
+
+        Returns:
+            decoded string
+        """
         chars: List[str] = []
         for i in ids:
+            if stop_at_eos and i == self.eos_id:
+                break
+
             if remove_special and i in (self.pad_id, self.sos_id, self.eos_id):
                 continue
+
             if 0 <= i < len(self.itos):
                 tok = self.itos[i]
-                # Avoid inserting the literal special tokens
                 if remove_special and tok in SPECIAL_TOKENS:
                     continue
                 chars.append(tok)
         return "".join(chars)
 
+    def count_unk(self, text: str) -> int:
+        """How many UNKs would appear if we encode this text."""
+        return sum(1 for ch in text if self.stoi.get(ch, self.unk_id) == self.unk_id)
+
     @staticmethod
     def build_from_texts(texts: List[str], min_freq: int = 1) -> "CharTokenizer":
-        # Count characters
         freq: Dict[str, int] = {}
         for t in texts:
             for ch in t:
                 freq[ch] = freq.get(ch, 0) + 1
 
-        # Build vocab list: specials first, then sorted chars for reproducibility
         chars = sorted([ch for ch, c in freq.items() if c >= min_freq])
         itos = SPECIAL_TOKENS + chars
         stoi = {tok: i for i, tok in enumerate(itos)}
@@ -82,20 +104,6 @@ class CharTokenizer:
         text_col: str = "label",
         min_freq: int = 1,
     ) -> "CharTokenizer":
-        """
-        Build tokenizer vocab from a labels CSV.
-
-        Expected schema (your processed datasets):
-          filename,label
-
-        Args:
-            csv_path: path to train_labels.csv
-            text_col: column that contains LaTeX string (default: "label")
-            min_freq: min frequency for a char to be included
-
-        Returns:
-            CharTokenizer
-        """
         csv_path = Path(csv_path)
         if not csv_path.exists():
             raise FileNotFoundError(f"CSV not found: {csv_path}")

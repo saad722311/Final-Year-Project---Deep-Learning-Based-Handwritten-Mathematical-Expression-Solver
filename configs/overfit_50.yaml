@@ -1,5 +1,5 @@
 run:
-  name: "crohme_cnn_lstm_dev_512"
+  name: "crohme_overfit50"
   output_dir: "results"
 
 seed: 42
@@ -7,12 +7,13 @@ seed: 42
 data:
   processed_dir: "03-development/datasets/TC11_CROHME23/processed"
   train_split: "train"
-  valid_split: "valid"
-  batch_size: 12
+  valid_split: "train"      # IMPORTANT: evaluate on the same split for sanity
+  batch_size: 8
   num_workers: 0
   max_width: 512
   target_height: 128
-  invert: false
+  limit_train: 50
+  limit_valid: 50
 
 tokenizer:
   max_vocab: null
@@ -22,12 +23,12 @@ model:
   d_model: 256
   hidden_size: 256
   attn_dim: 256
-  dropout: 0.1
+  dropout: 0.0             # IMPORTANT: easier overfit
 
 train:
-  epochs: 40
-  lr: 0.0003
+  epochs: 200              # yes high, but it's tiny
+  lr: 0.001
   weight_decay: 0.0
   grad_clip: 1.0
-  max_batches_per_epoch: null
+  max_batches_per_epoch: null   # ~7 batches * 8 = ~56 samples
   device: "auto"

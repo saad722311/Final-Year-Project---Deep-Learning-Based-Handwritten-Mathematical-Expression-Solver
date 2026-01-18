@@ -5,11 +5,10 @@ import argparse
 import csv
 import time
 from pathlib import Path
-from xml.parsers.expat import model
 
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 import yaml
 
 from src.utils.seed import seed_everything
@@ -19,7 +18,6 @@ from src.data.tokenizer import CharTokenizer
 from src.data.datasets import CROHMEProcessedConfig, CROHMEProcessedDataset
 from src.data.transforms import ImageTransformConfig
 from src.data.collate import HMERBatchCollator  # picklable collator (no lambda)
-
 from src.models.hmer_model import HMERModel
 
 
@@ -59,17 +57,22 @@ def run_epoch(
             break
 
         images = batch["images"].to(device)
-        image_widths = batch["image_widths"].to(device)  # ✅ NEW
+
+        image_widths = batch.get("image_widths", None)
+        if image_widths is not None:
+            image_widths = image_widths.to(device)
+
         input_ids = batch["input_ids"].to(device)
         target_ids = batch["target_ids"].to(device)
 
-        # Forward -> logits (pass widths so encoder can build memory_mask)
-        logits = model(images=images, input_ids=input_ids, image_widths=image_widths)  # ✅ UPDATED
+        # Forward -> logits
+        logits = model(images=images, input_ids=input_ids, image_widths=image_widths)  # (B,L,V)
 
-        # Cross entropy: ignore padding
+        # Cross entropy (ignore PAD)
+        # logits: (B,L,V) -> (B,V,L) for CE
         loss = nn.functional.cross_entropy(
-            logits.transpose(1, 2),  # (B, V, L)
-            target_ids,              # (B, L)
+            logits.transpose(1, 2),
+            target_ids,
             ignore_index=pad_id,
         )
 
@@ -117,8 +120,6 @@ def main():
     print(f"Vocab size: {tokenizer.vocab_size}")
 
     pad_id = tokenizer.pad_id
-
-    # picklable collator instance (no lambda)
     collator = HMERBatchCollator(pad_id=pad_id)
 
     # -------------------
@@ -127,8 +128,13 @@ def main():
     tf_cfg = ImageTransformConfig(
         target_height=int(cfg["data"]["target_height"]),
         max_width=int(cfg["data"]["max_width"]),
-        invert=bool(cfg["data"]["invert"]),
+        invert=bool(cfg["data"].get("invert", False)),
     )
+
+    # Optional debug toggles (only affect printing, not training)
+    debug_print = bool(cfg.get("debug", {}).get("dataset_print", False))
+    debug_limit = int(cfg.get("debug", {}).get("dataset_print_limit", 5))
+    warn_unk = bool(cfg.get("debug", {}).get("warn_unk", True))
 
     train_ds = CROHMEProcessedDataset(
         cfg=CROHMEProcessedConfig(
@@ -137,6 +143,9 @@ def main():
         ),
         tokenizer=tokenizer,
         img_tf_cfg=tf_cfg,
+        debug_print=debug_print,
+        debug_limit=debug_limit,
+        warn_unk=warn_unk,
     )
 
     valid_ds = CROHMEProcessedDataset(
@@ -146,12 +155,23 @@ def main():
         ),
         tokenizer=tokenizer,
         img_tf_cfg=tf_cfg,
+        debug_print=False,   # keep valid clean
+        debug_limit=0,
+        warn_unk=warn_unk,
     )
+
+    # ✅ TRUE LIMITING: restrict dataset size for real overfit sanity check
+    limit_train = cfg["data"].get("limit_train", None)
+    limit_valid = cfg["data"].get("limit_valid", None)
+
+    if limit_train is not None:
+        train_ds = Subset(train_ds, list(range(int(limit_train))))
+    if limit_valid is not None:
+        valid_ds = Subset(valid_ds, list(range(int(limit_valid))))
 
     bs = int(cfg["data"]["batch_size"])
     nw = int(cfg["data"]["num_workers"])
 
-    # On macOS, pin_memory does not help for MPS; keep it False.
     train_loader = DataLoader(
         train_ds,
         batch_size=bs,
@@ -169,14 +189,18 @@ def main():
         persistent_workers=(nw > 0),
     )
 
+    # -------------------
+    # Model
+    # -------------------
     model = HMERModel(
-    vocab_size=tokenizer.vocab_size,
-    pad_id=tokenizer.pad_id,
-    sos_id=tokenizer.sos_id,
-    eos_id=tokenizer.eos_id,
-    encoder_d_model=int(cfg["model"]["d_model"]),
-    decoder_hidden=int(cfg["model"]["hidden_size"]),
-).to(device)
+        vocab_size=tokenizer.vocab_size,
+        pad_id=tokenizer.pad_id,
+        sos_id=tokenizer.sos_id,
+        eos_id=tokenizer.eos_id,
+        unk_id=tokenizer.unk_id,
+        encoder_d_model=int(cfg["model"]["d_model"]),
+        decoder_hidden=int(cfg["model"]["hidden_size"]),
+    ).to(device)
 
     optimizer = torch.optim.AdamW(
         model.parameters(),

@@ -15,6 +15,7 @@ class HMERModel(nn.Module):
         pad_id: int,
         sos_id: int,
         eos_id: int,
+        unk_id: int | None = None,  # ✅ NEW
         encoder_d_model: int = 256,
         decoder_hidden: int = 256,
     ):
@@ -29,6 +30,7 @@ class HMERModel(nn.Module):
             pad_id=pad_id,
             sos_id=sos_id,
             eos_id=eos_id,
+            unk_id=unk_id,
             d_model=encoder_d_model,
             emb_dim=encoder_d_model,
             hidden_size=decoder_hidden,
@@ -43,12 +45,9 @@ class HMERModel(nn.Module):
     ) -> torch.Tensor:
         """
         Training forward (teacher forcing).
-        images: (B,1,128,Wmax)
-        input_ids: (B,L)
-        image_widths: (B,) true widths before padding (recommended)
         """
-        memory, memory_mask = self.encoder(images, image_widths=image_widths)  # (B,T,D), (B,T) or None
-        logits = self.decoder(input_ids, memory, memory_mask=memory_mask)      # (B,L,V)
+        memory, memory_mask = self.encoder(images, image_widths=image_widths)
+        logits = self.decoder(input_ids, memory, memory_mask=memory_mask)
         return logits
 
     @torch.no_grad()
@@ -57,16 +56,39 @@ class HMERModel(nn.Module):
         images: torch.Tensor,
         image_widths: torch.Tensor | None = None,
         max_len: int = 160,
+        decode: str = "greedy",      # "greedy" | "beam"
+        beam_size: int = 5,
+        alpha: float = 0.6,
+        min_len: int = 1,
+        repetition_penalty: float = 1.10,
+        no_repeat_ngram_size: int = 3,
+        forbid_unk: bool = True,
     ) -> torch.Tensor:
         """
-        Greedy decode from images.
-        Returns token ids: (B, L_pred)
+        Decode from images.
         """
         self.eval()
         memory, memory_mask = self.encoder(images, image_widths=image_widths)
-        pred_ids = self.decoder.greedy_decode(
+
+        if decode == "beam":
+            return self.decoder.beam_decode(
+                memory=memory,
+                memory_mask=memory_mask,
+                max_len=max_len,
+                beam_size=beam_size,
+                alpha=alpha,
+                min_len=min_len,
+                repetition_penalty=repetition_penalty,
+                no_repeat_ngram_size=no_repeat_ngram_size,
+                forbid_unk=forbid_unk,
+            )
+
+        return self.decoder.greedy_decode(
             memory=memory,
             memory_mask=memory_mask,
             max_len=max_len,
+            min_len=min_len,
+            repetition_penalty=repetition_penalty,
+            no_repeat_ngram_size=no_repeat_ngram_size,
+            forbid_unk=forbid_unk,
         )
-        return pred_ids

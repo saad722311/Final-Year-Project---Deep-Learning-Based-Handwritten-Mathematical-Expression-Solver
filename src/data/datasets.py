@@ -32,6 +32,9 @@ class CROHMEProcessedDataset(Dataset):
         cfg: CROHMEProcessedConfig,
         tokenizer: CharTokenizer,
         img_tf_cfg: ImageTransformConfig | None = None,
+        debug_print: bool = False,
+        debug_limit: int = 5,
+        warn_unk: bool = True,
     ):
         self.cfg = cfg
         self.tokenizer = tokenizer
@@ -60,6 +63,13 @@ class CROHMEProcessedDataset(Dataset):
 
         self.transform = DefaultImageTransform(img_tf_cfg)
 
+        # Debug printing controls
+        self.debug_print = debug_print
+        self.debug_limit = debug_limit
+        self._debug_count = 0
+
+        self.warn_unk = warn_unk
+
     def __len__(self) -> int:
         return len(self.rows)
 
@@ -72,13 +82,39 @@ class CROHMEProcessedDataset(Dataset):
         img = Image.open(img_path)
         x: torch.Tensor = self.transform(img)  # (1, H, W)
 
+        # IMPORTANT: encode() is expected to include special tokens: [SOS, ..., EOS]
         token_ids = self.tokenizer.encode(label)
+
+        # Optional UNK warnings (helps diagnose “can’t overfit”)
+        unk_id = getattr(self.tokenizer, "unk_id", None)
+        if self.warn_unk and unk_id is not None:
+            unk_count = sum(1 for t in token_ids if t == unk_id)
+            if unk_count > 0:
+                print(f"[WARN] UNK in label | file={filename} | unk_count={unk_count}")
+                print("LABEL:", label)
+                print("ENC  :", self.tokenizer.decode(token_ids, remove_special=False))
+                print("----")
 
         # Teacher forcing setup:
         # input_ids:  <SOS> a b c
         # target_ids: a b c <EOS>
-        input_ids = torch.tensor(token_ids[:-1], dtype=torch.long)
-        target_ids = torch.tensor(token_ids[1:], dtype=torch.long)
+        if len(token_ids) < 2:
+            # Extremely defensive: should not happen if encode adds SOS/EOS
+            input_ids = torch.tensor([self.tokenizer.sos_id], dtype=torch.long)
+            target_ids = torch.tensor([self.tokenizer.eos_id], dtype=torch.long)
+        else:
+            input_ids = torch.tensor(token_ids[:-1], dtype=torch.long)
+            target_ids = torch.tensor(token_ids[1:], dtype=torch.long)
+
+        # Debug print (limited)
+        if self.debug_print and self._debug_count < self.debug_limit:
+            self._debug_count += 1
+            print("FILE :", filename)
+            print("LABEL:", label)
+            print("ENC  :", self.tokenizer.decode(token_ids, remove_special=False))
+            print("IN   :", self.tokenizer.decode(input_ids.tolist(), remove_special=False))
+            print("TGT  :", self.tokenizer.decode(target_ids.tolist(), remove_special=False))
+            print("----")
 
         return {
             "image": x,
