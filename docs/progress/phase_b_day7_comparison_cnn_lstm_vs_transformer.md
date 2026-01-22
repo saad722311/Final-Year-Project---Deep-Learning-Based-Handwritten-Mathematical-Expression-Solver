@@ -1,23 +1,24 @@
-# Day 7 — Baseline Comparison (CNN+LSTM vs CNN+Transformer)
+# Day 7 — Baseline Comparison (CNN + LSTM vs CNN + Transformer)
 
 ## Goal
-Compare two baseline decoders on CROHME23 processed dataset:
-- **CNN Encoder + LSTM Decoder (attention)**
+Compare two baseline decoders for handwritten mathematical expression recognition on the CROHME23 processed dataset:
+
+- **CNN Encoder + LSTM Decoder (with attention)**
 - **CNN Encoder + Transformer Decoder**
 
-Evaluation uses:
-- Exact Match (EM)
-- Normalized Exact Match (nEM) — ignores whitespace / surrounding `$...$`
-- Teacher-forcing Token Accuracy (TokenAcc)
+Evaluation metrics:
+- **Exact Match (EM)** — full LaTeX sequence must match
+- **Normalized Exact Match (nEM)** — ignores whitespace and surrounding `$...$`
+- **Teacher-forcing Token Accuracy (TokenAcc)**
 
-All results below are computed on **valid split**, first **300** samples (`--max_eval 300`).
+All evaluations are performed on the **first 300 samples** (`--max_eval 300`).
 
 ---
 
 ## Experiment Setup
 
 ### Common Inference Settings
-All models were evaluated with the same decoding constraints:
+All models were evaluated using identical decoding constraints:
 
 - `max_len = 256`
 - `min_len = 10`
@@ -25,11 +26,11 @@ All models were evaluated with the same decoding constraints:
 - `no_repeat_ngram_size = 3`
 - `forbid_unk = True`
 
-Decoding modes:
+Decoding strategies:
 - **Greedy**
-- **Beam search (beam_size=5, alpha=0.6)**
+- **Beam Search (beam_size = 5, alpha = 0.6)**
 
-Outputs saved to:
+Saved outputs:
 - `results/compare/transformer_valid_greedy_300.txt`
 - `results/compare/transformer_valid_beam5a06_300.txt`
 - `results/compare/lstm_valid_greedy_300.txt`
@@ -38,81 +39,88 @@ Outputs saved to:
 ---
 
 ## Training Observation (Overfitting)
-During training, validation loss improved up to a certain epoch and then started increasing while training loss continued decreasing.
+During training, validation loss decreased until a certain epoch and then started increasing, while training loss continued to decrease.
 
 This indicates **overfitting**:
-- the model keeps memorizing training data
-- generalization to validation gets worse after the best epoch
+- the model increasingly memorizes training data
+- generalization to validation samples degrades after the best epoch
 
-**Action:** always evaluate using `best.pt` (lowest valid loss), and prefer early stopping / regularization.
+**Action:** all evaluations are performed using `best.pt` (lowest validation loss).
 
 ---
 
-## Results Summary (Valid split, first 300)
+## Results — Validation Set (First 300 Samples)
 
 | Model | Decode | EM | nEM | TokenAcc |
 |------|--------|----|-----|----------|
-| CNN+Transformer | Greedy | 0.00% (0/300) | 0.00% (0/300) | 61.96% (5078/8195) |
-| CNN+Transformer | Beam (5, α=0.6) | 0.33% (1/300) | 0.33% (1/300) | 61.96% (5078/8195) |
-| CNN+LSTM | Greedy | 0.00% (0/300) | 0.33% (1/300) | 57.62% (4722/8195) |
-| CNN+LSTM | Beam (5, α=0.6) | 0.00% (0/300) | 0.33% (1/300) | 57.62% (4722/8195) |
+| CNN + Transformer | Greedy | 0.00% (0/300) | 0.00% (0/300) | 61.96% (5078/8195) |
+| CNN + Transformer | Beam (5, α=0.6) | 0.33% (1/300) | 0.33% (1/300) | 61.96% (5078/8195) |
+| CNN + LSTM | Greedy | 0.00% (0/300) | 0.33% (1/300) | 57.62% (4722/8195) |
+| CNN + LSTM | Beam (5, α=0.6) | 0.00% (0/300) | 0.33% (1/300) | 57.62% (4722/8195) |
+
+---
+
+## Results — Training Set (First 300 Samples)
+
+| Model | Decode | EM | nEM | TokenAcc |
+|------|--------|----|-----|----------|
+| CNN + LSTM | Greedy | 3.33% (10/300) | 8.00% (24/300) | 82.35% |
+| CNN + LSTM | Beam (5, α=0.6) | **6.67% (20/300)** | **12.00% (36/300)** | 82.35% |
+| CNN + Transformer | Greedy | 4.00% (12/300) | 4.00% (12/300) | **90.14%** |
+| CNN + Transformer | Beam (5, α=0.6) | 3.33% (10/300) | 3.33% (10/300) | **90.14%** |
 
 ---
 
 ## Key Findings
 
-### 1) Transformer > LSTM on Token Accuracy (so far)
-Transformer token accuracy is higher on the same validation slice:
-- Transformer: **61.96%**
-- LSTM: **57.62%**
+### 1) Token Accuracy vs Exact Match
+Both models achieve relatively high token accuracy but extremely low exact match.
 
-This suggests Transformer is learning better token-level patterns.
+This is expected in handwritten math recognition:
+- EM requires **every token** to be correct
+- a single incorrect symbol breaks the entire sequence
+- TokenAcc can improve while EM remains near zero
 
-### 2) Exact Match remains extremely low for both
-Even with beam decoding + constraints, EM is near 0.
+---
 
-Reason:
-- EM requires the **entire LaTeX sequence** to be correct.
-- One missing brace, wrong superscript, or token mismatch makes the whole expression incorrect.
-- TokenAcc can improve while EM stays low, especially with long sequences.
+### 2) Transformer vs LSTM
+- Transformer consistently achieves **higher token accuracy**
+- LSTM shows slightly higher EM on the training set with beam search
+- On validation data, neither model achieves strong EM yet
 
-### 3) Beam search helps slightly (Transformer)
-Transformer beam produced:
-- EM **0.33%** vs greedy **0.00%**
-LSTM beam did not improve EM in this run.
+This suggests the Transformer is a stronger baseline architecture, but decoding stability and generalization remain limiting factors.
+
+---
+
+### 3) Train vs Validation Gap
+- Train EM > Validation EM for both models
+- Indicates the models are learning, but overfitting occurs
+- Sequence-level generalization remains weak
 
 ---
 
 ## Conclusion (Day 7)
-- The system is learning (loss decreases; token accuracy improves), but it does not yet generalize well enough to produce full-expression exact matches.
-- Transformer baseline currently looks stronger than LSTM in token-level accuracy.
-- Next work should focus on improving generalization + decoding stability to increase EM.
+- Both CNN+LSTM and CNN+Transformer baselines learn token-level structure but struggle with full-expression correctness.
+- Transformer decoder is the more promising baseline due to higher token accuracy.
+- Improving exact match will require better generalization, decoding strategies, and possibly stronger encoders.
 
 ---
 
-## Next Steps (Planned Improvements)
+## Next Steps
 
-### A) Training improvements (generalization)
-- Add regularization for Transformer: weight decay (e.g. 0.01) and higher dropout (e.g. 0.2)
-- Use early stopping (stop near best epoch instead of training long after val loss rises)
-- Consider LR scheduling (ReduceLROnPlateau / cosine decay)
+### A) Improve Generalization
+- Increase regularization (dropout, weight decay)
+- Apply early stopping
+- Introduce learning-rate scheduling
 
-### B) Better evaluation signals (beyond EM)
-Track additional metrics more sensitive than EM:
-- Edit distance / CER on token sequences
-- Expression-level F1 on symbols
-- Bracket-balance rate (how many predictions have valid LaTeX structure)
+### B) Improve Sequence-Level Accuracy
+- Label smoothing
+- Scheduled sampling
+- Coverage-aware beam search
 
-### C) Data / tokenization normalization
-- Normalize spacing consistently
-- Ensure stable tokenization for braces, commands, subscripts/superscripts
-- Investigate common failure patterns (e.g., unmatched `}`)
-
-### D) UI pipeline planning
-Build an interface where:
-1. User writes expression using stylus
-2. Model predicts LaTeX
-3. LaTeX is sent to an LLM for step-by-step solution/explanation
-4. Show final rendered expression + steps
-
-This will be implemented after improving baseline performance and stabilizing decoding outputs.
+### C) Application Pipeline
+If baseline EM remains limited, integrate a pretrained HMER model and focus on:
+1. Stylus-based input interface
+2. Image preprocessing and LaTeX recognition
+3. LLM-based step-by-step solution generation
+4. End-to-end interactive system
