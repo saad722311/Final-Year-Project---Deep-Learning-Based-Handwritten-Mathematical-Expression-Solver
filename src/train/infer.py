@@ -101,14 +101,14 @@ def main():
     ap.add_argument("--max_eval", type=int, default=None)
     ap.add_argument("--print_every", type=int, default=50)
 
-    # ✅ NEW: decoding controls
+    # decoding controls
     ap.add_argument("--decode", type=str, default="greedy", choices=["greedy", "beam"])
     ap.add_argument("--beam_size", type=int, default=5)
     ap.add_argument("--alpha", type=float, default=0.6)
     ap.add_argument("--min_len", type=int, default=1)
     ap.add_argument("--repetition_penalty", type=float, default=1.10)
     ap.add_argument("--no_repeat_ngram_size", type=int, default=3)
-    ap.add_argument("--forbid_unk", action="store_true", help="Forbid UNK during decoding (recommended)")
+    ap.add_argument("--forbid_unk", action="store_true", help="Forbid UNK during decoding")
 
     ap.add_argument("--no_teacher_metrics", action="store_true", help="Skip teacher-forcing token acc (debug only)")
     args = ap.parse_args()
@@ -159,9 +159,18 @@ def main():
         pad_id=tokenizer.pad_id,
         sos_id=tokenizer.sos_id,
         eos_id=tokenizer.eos_id,
-        unk_id=tokenizer.unk_id,  # ✅ IMPORTANT
+        unk_id=tokenizer.unk_id,
+
         encoder_d_model=int(cfg["model"]["d_model"]),
-        decoder_hidden=int(cfg["model"]["hidden_size"]),
+        decoder_hidden=int(cfg["model"].get("hidden_size", 256)),
+
+        # ✅ NEW: supports transformer too
+        decoder_type=str(cfg["model"].get("decoder_type", "lstm")),
+        n_heads=int(cfg["model"].get("n_heads", 4)),
+        n_layers=int(cfg["model"].get("n_layers", 4)),
+        ff_dim=int(cfg["model"].get("ff_dim", 1024)),
+        dropout=float(cfg["model"].get("dropout", 0.1)),
+        max_len=int(cfg["data"].get("max_decode_len", 256)),
     ).to(device)
 
     ckpt_path = Path(args.ckpt) if args.ckpt else (output_dir / "best.pt")
@@ -191,14 +200,14 @@ def main():
         gts = batch["labels"]
         filenames = batch["filenames"]
 
-        # Teacher-forcing token accuracy (FAST)
+        # Teacher-forcing token accuracy
         if not args.no_teacher_metrics:
-            logits = model(images=images, input_ids=input_ids, image_widths=image_widths)  # (B,L,V)
+            logits = model(images=images, input_ids=input_ids, image_widths=image_widths)
             c, t = token_accuracy_from_logits(logits, target_ids, pad_id=tokenizer.pad_id)
             tok_correct += c
             tok_total += t
 
-        # ✅ Decode (greedy or beam)
+        # Decode
         pred_ids = model.generate(
             images,
             image_widths=image_widths,
@@ -228,6 +237,7 @@ def main():
                 ta = 100.0 * tok_correct / max(1, tok_total) if tok_total > 0 else 0.0
                 print(f"[eval] batches={batch_idx+1} samples={total_samples} EM={em:.2f}% nEM={nem:.2f}% tokAcc={ta:.2f}%")
 
+        # Print samples
         for i in range(len(gts)):
             if printed >= args.num_samples:
                 break

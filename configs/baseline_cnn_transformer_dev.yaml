@@ -1,0 +1,47 @@
+# configs/baseline_cnn_transformer_dev.yaml
+
+run:
+  name: "crohme_cnn_transformer_dev_512"
+  output_dir: "results"
+
+seed: 42
+
+data:
+  processed_dir: "03-development/datasets/TC11_CROHME23/processed"
+  train_split: "train"
+  valid_split: "valid"
+  batch_size: 12
+  num_workers: 0
+  max_width: 512
+  target_height: 128
+  invert: false
+
+  # optional (used by infer / generation; safe to keep here)
+  max_decode_len: 256
+
+tokenizer:
+  max_vocab: null
+
+model:
+  type: "cnn_transformer"
+  decoder_type: "transformer"
+
+  # encoder/decoder shared dim
+  d_model: 256
+
+  # transformer decoder
+  n_heads: 4
+  n_layers: 4
+  ff_dim: 1024
+  dropout: 0.1
+
+  # positional embedding max length (must be >= max_decode_len)
+  max_len: 256
+
+train:
+  epochs: 40
+  lr: 0.0003
+  weight_decay: 0.0
+  grad_clip: 1.0
+  max_batches_per_epoch: null
+  device: "auto"

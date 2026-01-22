@@ -193,13 +193,22 @@ def main():
     # Model
     # -------------------
     model = HMERModel(
-        vocab_size=tokenizer.vocab_size,
-        pad_id=tokenizer.pad_id,
-        sos_id=tokenizer.sos_id,
-        eos_id=tokenizer.eos_id,
-        unk_id=tokenizer.unk_id,
-        encoder_d_model=int(cfg["model"]["d_model"]),
-        decoder_hidden=int(cfg["model"]["hidden_size"]),
+    vocab_size=tokenizer.vocab_size,
+    pad_id=tokenizer.pad_id,
+    sos_id=tokenizer.sos_id,
+    eos_id=tokenizer.eos_id,
+    unk_id=tokenizer.unk_id,
+
+    encoder_d_model=int(cfg["model"]["d_model"]),
+    decoder_hidden=int(cfg["model"].get("hidden_size", 256)),
+
+    # ✅ NEW (Day 7)
+    decoder_type=str(cfg["model"].get("decoder_type", "lstm")),
+    n_heads=int(cfg["model"].get("n_heads", 4)),
+    n_layers=int(cfg["model"].get("n_layers", 4)),
+    ff_dim=int(cfg["model"].get("ff_dim", 1024)),
+    dropout=float(cfg["model"].get("dropout", 0.1)),
+    max_len=int(cfg["data"].get("max_decode_len", 256)),
     ).to(device)
 
     optimizer = torch.optim.AdamW(
