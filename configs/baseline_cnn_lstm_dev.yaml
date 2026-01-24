@@ -1,5 +1,5 @@
 run:
-  name: "crohme_cnn_lstm_dev_512"
+  name: "crohme_cnn_lstm_dev_day_8"
   output_dir: "results"
 
 seed: 42
@@ -20,14 +20,14 @@ tokenizer:
 model:
   type: "cnn_lstm"
   d_model: 256
-  hidden_size: 256
+  hidden_size: 512
   attn_dim: 256
-  dropout: 0.1
+  dropout: 0.2
 
 train:
-  epochs: 40
+  epochs: 20
   lr: 0.0003
-  weight_decay: 0.0
+  weight_decay: 0.01
   grad_clip: 1.0
   max_batches_per_epoch: null
   device: "auto"

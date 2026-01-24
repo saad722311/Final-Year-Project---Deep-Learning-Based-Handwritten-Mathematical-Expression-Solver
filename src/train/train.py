@@ -45,6 +45,7 @@ def run_epoch(
     pad_id: int,
     grad_clip: float | None = None,
     max_batches: int | None = None,
+    label_smoothing: float = 0.0,  # ✅ passed in from main()
 ) -> float:
     is_train = optimizer is not None
     model.train(is_train)
@@ -74,6 +75,7 @@ def run_epoch(
             logits.transpose(1, 2),
             target_ids,
             ignore_index=pad_id,
+            label_smoothing=float(label_smoothing),
         )
 
         if is_train:
@@ -108,6 +110,9 @@ def main():
 
     device = get_device(cfg["train"].get("device", "auto"))
     print(f"Device: {device}")
+
+    # ✅ label smoothing (train only). Keep val at 0.0 for "true" CE.
+    train_label_smoothing = float(cfg["train"].get("label_smoothing", 0.0))
 
     # -------------------
     # Tokenizer
@@ -155,7 +160,7 @@ def main():
         ),
         tokenizer=tokenizer,
         img_tf_cfg=tf_cfg,
-        debug_print=False,   # keep valid clean
+        debug_print=False,  # keep valid clean
         debug_limit=0,
         warn_unk=warn_unk,
     )
@@ -193,22 +198,20 @@ def main():
     # Model
     # -------------------
     model = HMERModel(
-    vocab_size=tokenizer.vocab_size,
-    pad_id=tokenizer.pad_id,
-    sos_id=tokenizer.sos_id,
-    eos_id=tokenizer.eos_id,
-    unk_id=tokenizer.unk_id,
-
-    encoder_d_model=int(cfg["model"]["d_model"]),
-    decoder_hidden=int(cfg["model"].get("hidden_size", 256)),
-
-    # ✅ NEW (Day 7)
-    decoder_type=str(cfg["model"].get("decoder_type", "lstm")),
-    n_heads=int(cfg["model"].get("n_heads", 4)),
-    n_layers=int(cfg["model"].get("n_layers", 4)),
-    ff_dim=int(cfg["model"].get("ff_dim", 1024)),
-    dropout=float(cfg["model"].get("dropout", 0.1)),
-    max_len=int(cfg["data"].get("max_decode_len", 256)),
+        vocab_size=tokenizer.vocab_size,
+        pad_id=tokenizer.pad_id,
+        sos_id=tokenizer.sos_id,
+        eos_id=tokenizer.eos_id,
+        unk_id=tokenizer.unk_id,
+        encoder_d_model=int(cfg["model"]["d_model"]),
+        decoder_hidden=int(cfg["model"].get("hidden_size", 256)),
+        # supports transformer too
+        decoder_type=str(cfg["model"].get("decoder_type", "lstm")),
+        n_heads=int(cfg["model"].get("n_heads", 4)),
+        n_layers=int(cfg["model"].get("n_layers", 4)),
+        ff_dim=int(cfg["model"].get("ff_dim", 1024)),
+        dropout=float(cfg["model"].get("dropout", 0.1)),
+        max_len=int(cfg["data"].get("max_decode_len", 256)),
     ).to(device)
 
     optimizer = torch.optim.AdamW(
@@ -246,6 +249,7 @@ def main():
             pad_id=pad_id,
             grad_clip=grad_clip,
             max_batches=max_batches,
+            label_smoothing=train_label_smoothing,  # ✅ train smoothing
         )
 
         with torch.no_grad():
@@ -257,6 +261,7 @@ def main():
                 pad_id=pad_id,
                 grad_clip=None,
                 max_batches=max_batches,
+                label_smoothing=0.0,  # ✅ keep validation CE "true"
             )
 
         dt = time.time() - t0

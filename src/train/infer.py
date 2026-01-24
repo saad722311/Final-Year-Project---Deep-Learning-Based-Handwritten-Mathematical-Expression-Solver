@@ -86,6 +86,37 @@ def token_accuracy_from_logits(logits: torch.Tensor, targets: torch.Tensor, pad_
     return int(correct), int(total)
 
 
+def brace_balance_ok(s: str) -> bool:
+    """
+    Simple structural sanity check (parentheses/braces/brackets).
+    Not LaTeX-aware, but very useful to quantify "broken structure".
+    """
+    pairs = {")": "(", "}": "{", "]": "["}
+    stack: list[str] = []
+    for ch in s:
+        if ch in "({[":
+            stack.append(ch)
+        elif ch in ")}]":
+            if not stack or stack[-1] != pairs[ch]:
+                return False
+            stack.pop()
+    return len(stack) == 0
+
+
+def pred_len(ids: list[int], eos_id: int, pad_id: int) -> int:
+    """
+    Count tokens until EOS (included), else until first PAD.
+    """
+    n = 0
+    for t in ids:
+        if t == pad_id:
+            break
+        n += 1
+        if t == eos_id:
+            break
+    return n
+
+
 @torch.no_grad()
 def main():
     ap = argparse.ArgumentParser()
@@ -160,11 +191,9 @@ def main():
         sos_id=tokenizer.sos_id,
         eos_id=tokenizer.eos_id,
         unk_id=tokenizer.unk_id,
-
         encoder_d_model=int(cfg["model"]["d_model"]),
         decoder_hidden=int(cfg["model"].get("hidden_size", 256)),
-
-        # ✅ NEW: supports transformer too
+        # supports transformer too
         decoder_type=str(cfg["model"].get("decoder_type", "lstm")),
         n_heads=int(cfg["model"].get("n_heads", 4)),
         n_layers=int(cfg["model"].get("n_layers", 4)),
@@ -187,6 +216,10 @@ def main():
 
     tok_correct = 0
     tok_total = 0
+
+    # ✅ Day 8 diagnostics
+    brace_ok = 0
+    len_sum = 0
 
     for batch_idx, batch in enumerate(loader):
         images = batch["images"].to(device)
@@ -228,6 +261,12 @@ def main():
             nem_correct += count_norm_exact(gts, preds)
             total_samples += len(gts)
 
+            # ✅ Day 8 diagnostics accumulation
+            for ids, s in zip(pred_ids_list, preds):
+                if brace_balance_ok(s):
+                    brace_ok += 1
+                len_sum += pred_len(ids, tokenizer.eos_id, tokenizer.pad_id)
+
             if args.max_eval is not None and total_samples >= args.max_eval:
                 break
 
@@ -235,7 +274,13 @@ def main():
                 em = 100.0 * em_correct / max(1, total_samples)
                 nem = 100.0 * nem_correct / max(1, total_samples)
                 ta = 100.0 * tok_correct / max(1, tok_total) if tok_total > 0 else 0.0
-                print(f"[eval] batches={batch_idx+1} samples={total_samples} EM={em:.2f}% nEM={nem:.2f}% tokAcc={ta:.2f}%")
+                br = 100.0 * brace_ok / max(1, total_samples)
+                avg_len = len_sum / max(1, total_samples)
+                print(
+                    f"[eval] batches={batch_idx+1} samples={total_samples} "
+                    f"EM={em:.2f}% nEM={nem:.2f}% tokAcc={ta:.2f}% "
+                    f"braceOK={br:.2f}% avgLen={avg_len:.1f}"
+                )
 
         # Print samples
         for i in range(len(gts)):
@@ -258,11 +303,16 @@ def main():
         em = 100.0 * em_correct / max(1, total_samples)
         nem = 100.0 * nem_correct / max(1, total_samples)
         ta = 100.0 * tok_correct / max(1, tok_total) if tok_total > 0 else 0.0
+        br = 100.0 * brace_ok / max(1, total_samples)
+        avg_len = len_sum / max(1, total_samples)
+
         limit_note = f" (first {total_samples})" if args.max_eval is not None else ""
         print(f"\nExact-match ({split}){limit_note}: {em:.2f}% ({em_correct}/{total_samples})")
         print(f"Norm exact-match ({split}){limit_note}: {nem:.2f}% ({nem_correct}/{total_samples})")
         if not args.no_teacher_metrics:
             print(f"Token accuracy ({split}){limit_note}: {ta:.2f}% ({tok_correct}/{tok_total})")
+        print(f"Brace-balance rate ({split}){limit_note}: {br:.2f}% ({brace_ok}/{total_samples})")
+        print(f"Avg decoded length ({split}){limit_note}: {avg_len:.1f} tokens")
 
     if args.out is not None:
         out_path = Path(args.out)
