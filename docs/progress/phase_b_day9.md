@@ -43,136 +43,6 @@ Outputs saved under:
 
 ---
 
-## Commands Used (Full-Split Evaluation)
-
-### LSTM — Valid (Full)
-```bash
-python3 -m src.train.infer \
-  --config configs/baseline_cnn_lstm_dev.yaml \
-  --ckpt results/crohme_cnn_lstm_dev_day_8/best.pt \
-  --split valid \
-  --eval_all \
-  --decode greedy \
-  --max_len 256 \
-  --min_len 10 \
-  --repetition_penalty 1.15 \
-  --no_repeat_ngram_size 3 \
-  --forbid_unk \
-  --out results/compare/day9/lstm_valid_greedy_full.txt
-
-python3 -m src.train.infer \
-  --config configs/baseline_cnn_lstm_dev.yaml \
-  --ckpt results/crohme_cnn_lstm_dev_day_8/best.pt \
-  --split valid \
-  --eval_all \
-  --decode beam \
-  --beam_size 5 \
-  --alpha 0.6 \
-  --max_len 256 \
-  --min_len 10 \
-  --repetition_penalty 1.15 \
-  --no_repeat_ngram_size 3 \
-  --forbid_unk \
-  --out results/compare/day9/lstm_valid_beam5a06_full.txt
-
-```bash
-
-### LSTM — Test (Full)
-
-```bash
-python3 -m src.train.infer \
-  --config configs/baseline_cnn_lstm_dev.yaml \
-  --ckpt results/crohme_cnn_lstm_dev_day_8/best.pt \
-  --split test \
-  --eval_all \
-  --decode greedy \
-  --max_len 256 \
-  --min_len 10 \
-  --repetition_penalty 1.15 \
-  --no_repeat_ngram_size 3 \
-  --forbid_unk \
-  --out results/compare/day9/lstm_test_greedy_full.txt
-
-python3 -m src.train.infer \
-  --config configs/baseline_cnn_lstm_dev.yaml \
-  --ckpt results/crohme_cnn_lstm_dev_day_8/best.pt \
-  --split test \
-  --eval_all \
-  --decode beam \
-  --beam_size 5 \
-  --alpha 0.6 \
-  --max_len 256 \
-  --min_len 10 \
-  --repetition_penalty 1.15 \
-  --no_repeat_ngram_size 3 \
-  --forbid_unk \
-  --out results/compare/day9/lstm_test_beam5a06_full.txt
-```bash
-
-### Transformer — Valid (Full)
-
-```bash
-python3 -m src.train.infer \
-  --config configs/baseline_cnn_transformer_dev.yaml \
-  --ckpt results/crohme_cnn_transformer_dev_day8/best.pt \
-  --split valid \
-  --eval_all \
-  --decode greedy \
-  --max_len 256 \
-  --min_len 10 \
-  --repetition_penalty 1.15 \
-  --no_repeat_ngram_size 3 \
-  --forbid_unk \
-  --out results/compare/day9/transformer_valid_greedy_full.txt
-
-python3 -m src.train.infer \
-  --config configs/baseline_cnn_transformer_dev.yaml \
-  --ckpt results/crohme_cnn_transformer_dev_day8/best.pt \
-  --split valid \
-  --eval_all \
-  --decode beam \
-  --beam_size 5 \
-  --alpha 0.6 \
-  --max_len 256 \
-  --min_len 10 \
-  --repetition_penalty 1.15 \
-  --no_repeat_ngram_size 3 \
-  --forbid_unk \
-  --out results/compare/day9/transformer_valid_beam5a06_full.txt
-```bash
-
-### Transformer — Test (Full)
-
-```bash
-python3 -m src.train.infer \
-  --config configs/baseline_cnn_transformer_dev.yaml \
-  --ckpt results/crohme_cnn_transformer_dev_day8/best.pt \
-  --split test \
-  --eval_all \
-  --decode greedy \
-  --max_len 256 \
-  --min_len 10 \
-  --repetition_penalty 1.15 \
-  --no_repeat_ngram_size 3 \
-  --forbid_unk \
-  --out results/compare/day9/transformer_test_greedy_full.txt
-
-python3 -m src.train.infer \
-  --config configs/baseline_cnn_transformer_dev.yaml \
-  --ckpt results/crohme_cnn_transformer_dev_day8/best.pt \
-  --split test \
-  --eval_all \
-  --decode beam \
-  --beam_size 5 \
-  --alpha 0.6 \
-  --max_len 256 \
-  --min_len 10 \
-  --repetition_penalty 1.15 \
-  --no_repeat_ngram_size 3 \
-  --forbid_unk \
-  --out results/compare/day9/transformer_test_beam5a06_full.txt
-```bash
-
 ## Results — Validation Set (Full, n=428)
 
 | Model | Decode | EM | nEM | TokenAcc | BraceOK | AvgLen |
@@ -261,3 +131,125 @@ Day 9 successfully produced **trustworthy baseline benchmarks** by evaluating bo
 **CNN + Transformer (Day 8 checkpoint) + Beam search (k=5, α=0.6)**
 
 ---
+
+## Commands Used (Full-Split Evaluation)
+
+### LSTM — Valid (Full)
+```bash
+python3 -m src.train.infer \
+  --config configs/baseline_cnn_lstm_dev.yaml \
+  --ckpt results/crohme_cnn_lstm_dev_day_8/best.pt \
+  --split valid \
+  --eval_all \
+  --decode greedy \
+  --max_len 256 \
+  --min_len 10 \
+  --repetition_penalty 1.15 \
+  --no_repeat_ngram_size 3 \
+  --forbid_unk \
+  --out results/compare/day9/lstm_valid_greedy_full.txt
+
+python3 -m src.train.infer \
+  --config configs/baseline_cnn_lstm_dev.yaml \
+  --ckpt results/crohme_cnn_lstm_dev_day_8/best.pt \
+  --split valid \
+  --eval_all \
+  --decode beam \
+  --beam_size 5 \
+  --alpha 0.6 \
+  --max_len 256 \
+  --min_len 10 \
+  --repetition_penalty 1.15 \
+  --no_repeat_ngram_size 3 \
+  --forbid_unk \
+  --out results/compare/day9/lstm_valid_beam5a06_full.txt
+
+### LSTM — Test (Full)
+
+python3 -m src.train.infer \
+  --config configs/baseline_cnn_lstm_dev.yaml \
+  --ckpt results/crohme_cnn_lstm_dev_day_8/best.pt \
+  --split test \
+  --eval_all \
+  --decode greedy \
+  --max_len 256 \
+  --min_len 10 \
+  --repetition_penalty 1.15 \
+  --no_repeat_ngram_size 3 \
+  --forbid_unk \
+  --out results/compare/day9/lstm_test_greedy_full.txt
+
+python3 -m src.train.infer \
+  --config configs/baseline_cnn_lstm_dev.yaml \
+  --ckpt results/crohme_cnn_lstm_dev_day_8/best.pt \
+  --split test \
+  --eval_all \
+  --decode beam \
+  --beam_size 5 \
+  --alpha 0.6 \
+  --max_len 256 \
+  --min_len 10 \
+  --repetition_penalty 1.15 \
+  --no_repeat_ngram_size 3 \
+  --forbid_unk \
+  --out results/compare/day9/lstm_test_beam5a06_full.txt
+
+### Transformer — Valid (Full)
+
+python3 -m src.train.infer \
+  --config configs/baseline_cnn_transformer_dev.yaml \
+  --ckpt results/crohme_cnn_transformer_dev_day8/best.pt \
+  --split valid \
+  --eval_all \
+  --decode greedy \
+  --max_len 256 \
+  --min_len 10 \
+  --repetition_penalty 1.15 \
+  --no_repeat_ngram_size 3 \
+  --forbid_unk \
+  --out results/compare/day9/transformer_valid_greedy_full.txt
+
+python3 -m src.train.infer \
+  --config configs/baseline_cnn_transformer_dev.yaml \
+  --ckpt results/crohme_cnn_transformer_dev_day8/best.pt \
+  --split valid \
+  --eval_all \
+  --decode beam \
+  --beam_size 5 \
+  --alpha 0.6 \
+  --max_len 256 \
+  --min_len 10 \
+  --repetition_penalty 1.15 \
+  --no_repeat_ngram_size 3 \
+  --forbid_unk \
+  --out results/compare/day9/transformer_valid_beam5a06_full.txt
+
+### Transformer — Test (Full)
+
+python3 -m src.train.infer \
+  --config configs/baseline_cnn_transformer_dev.yaml \
+  --ckpt results/crohme_cnn_transformer_dev_day8/best.pt \
+  --split test \
+  --eval_all \
+  --decode greedy \
+  --max_len 256 \
+  --min_len 10 \
+  --repetition_penalty 1.15 \
+  --no_repeat_ngram_size 3 \
+  --forbid_unk \
+  --out results/compare/day9/transformer_test_greedy_full.txt
+
+python3 -m src.train.infer \
+  --config configs/baseline_cnn_transformer_dev.yaml \
+  --ckpt results/crohme_cnn_transformer_dev_day8/best.pt \
+  --split test \
+  --eval_all \
+  --decode beam \
+  --beam_size 5 \
+  --alpha 0.6 \
+  --max_len 256 \
+  --min_len 10 \
+  --repetition_penalty 1.15 \
+  --no_repeat_ngram_size 3 \
+  --forbid_unk \
+  --out results/compare/day9/transformer_test_beam5a06_full.txt
