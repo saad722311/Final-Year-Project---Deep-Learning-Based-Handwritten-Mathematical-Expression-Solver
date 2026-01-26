@@ -75,8 +75,11 @@ python3 -m src.train.infer \
   --forbid_unk \
   --out results/compare/day9/lstm_valid_beam5a06_full.txt
 
+```bash
+
 ### LSTM — Test (Full)
 
+```bash
 python3 -m src.train.infer \
   --config configs/baseline_cnn_lstm_dev.yaml \
   --ckpt results/crohme_cnn_lstm_dev_day_8/best.pt \
@@ -104,9 +107,11 @@ python3 -m src.train.infer \
   --no_repeat_ngram_size 3 \
   --forbid_unk \
   --out results/compare/day9/lstm_test_beam5a06_full.txt
+```bash
 
 ### Transformer — Valid (Full)
 
+```bash
 python3 -m src.train.infer \
   --config configs/baseline_cnn_transformer_dev.yaml \
   --ckpt results/crohme_cnn_transformer_dev_day8/best.pt \
@@ -134,9 +139,11 @@ python3 -m src.train.infer \
   --no_repeat_ngram_size 3 \
   --forbid_unk \
   --out results/compare/day9/transformer_valid_beam5a06_full.txt
+```bash
 
 ### Transformer — Test (Full)
 
+```bash
 python3 -m src.train.infer \
   --config configs/baseline_cnn_transformer_dev.yaml \
   --ckpt results/crohme_cnn_transformer_dev_day8/best.pt \
@@ -164,6 +171,7 @@ python3 -m src.train.infer \
   --no_repeat_ngram_size 3 \
   --forbid_unk \
   --out results/compare/day9/transformer_test_beam5a06_full.txt
+```bash
 
 ## Results — Validation Set (Full, n=428)
 
