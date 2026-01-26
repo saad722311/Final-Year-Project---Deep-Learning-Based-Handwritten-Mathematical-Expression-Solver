@@ -134,8 +134,8 @@ Day 9 successfully produced **trustworthy baseline benchmarks** by evaluating bo
 
 ## Commands Used (Full-Split Evaluation)
 
-### LSTM — Valid (Full)
 ```bash
+### LSTM — Valid (Full)
 python3 -m src.train.infer \
   --config configs/baseline_cnn_lstm_dev.yaml \
   --ckpt results/crohme_cnn_lstm_dev_day_8/best.pt \
