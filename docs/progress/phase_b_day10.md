@@ -1,13 +1,3 @@
-Got it — thanks for flagging that 👍
-Below is the ENTIRE Day 10 write-up in clean, valid Markdown, with no formatting breaks, no mixed blocks, and no rendering issues.
-
-👉 Copy–paste this EXACTLY as-is into
-docs/progress/phase_b_day10.md
-and then commit & push.
-
-⸻
-
-
 # Day 10 — Pipeline Sanity, Label Normalization, and Overfit Validation
 
 ## Goal
