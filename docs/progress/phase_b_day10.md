@@ -12,8 +12,6 @@ The goal of Day 10 was to diagnose the root cause of extremely low Exact Match (
 
 This day focused on sanity-checking the entire pipeline end-to-end before proceeding to large-scale pretraining.
 
----
-
 ## 1. Pipeline Sanity: Image Integrity Check
 
 ### Method
@@ -33,8 +31,6 @@ Findings
 Conclusion
 
 ✅ Image preprocessing is correct and not responsible for low EM.
-
-⸻
 
 ##  2. Tokenizer Health Check (UNK Analysis)
 
@@ -56,8 +52,6 @@ Conclusion
 
 ✅ Tokenizer vocabulary fully covers all labels
 ❌ UNK tokens are not the cause of EM failure
-
-⸻
 
 ##  3. Dataset Split Statistics (Length Distribution)
 
@@ -88,8 +82,6 @@ Conclusion
 ✅ Dataset splits are healthy and realistic
 ❌ Length distribution alone does not explain EM collapse
 
-⸻
-
 ##  4. Label Normalization Issue (LaTeX $...$ Delimiters)
 
 Problem Observed
@@ -107,8 +99,6 @@ This caused:
 	•	Token-level learning to succeed
 	•	Exact-match evaluation to fail due to string mismatch
 	•	Overfit models to emit empty or truncated predictions
-
-⸻
 
 ## 5. Label Normalization Fix
 
@@ -134,8 +124,6 @@ x^2
 
 After reprocessing, vocabulary size reduced from 84 → 83, confirming removal of $.
 
-⸻
-
 ## 6. Overfit Test (Critical Sanity Check)
 
 Configuration
@@ -149,8 +137,6 @@ Training Result
 	•	Train loss → near zero
 	•	Validation loss remains high (expected)
 	•	Model successfully memorizes training samples
-
-⸻
 
 ## 7. Overfit Evaluation Results
 
@@ -171,8 +157,6 @@ Validation Split
 
 This is expected when overfitting on a tiny subset.
 
-⸻
-
 ## Final Diagnosis (Day 10)
 
 Component	Status
@@ -183,9 +167,6 @@ Training loop	✅ Correct
 Decoder / inference	✅ Correct
 Label normalization	❌ Was broken
 Overfit capability	✅ Confirmed
-
-
-⸻
 
 ## Conclusion
 
