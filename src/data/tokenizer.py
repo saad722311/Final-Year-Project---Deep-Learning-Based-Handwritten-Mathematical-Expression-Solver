@@ -5,7 +5,9 @@ import csv
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
+
+from src.utils.latex_norm import normalize_latex_label
 
 
 SPECIAL_TOKENS = ["<PAD>", "<SOS>", "<EOS>", "<UNK>"]
@@ -103,6 +105,7 @@ class CharTokenizer:
         csv_path: str | Path,
         text_col: str = "label",
         min_freq: int = 1,
+        normalize: bool = True,
     ) -> "CharTokenizer":
         csv_path = Path(csv_path)
         if not csv_path.exists():
@@ -120,6 +123,10 @@ class CharTokenizer:
 
             for row in reader:
                 t = (row.get(text_col) or "").strip()
+                if not t:
+                    continue
+                if normalize:
+                    t = normalize_latex_label(t)
                 if t:
                     texts.append(t)
 

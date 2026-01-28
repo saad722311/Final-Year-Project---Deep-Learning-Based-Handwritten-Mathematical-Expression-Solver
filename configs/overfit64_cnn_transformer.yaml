@@ -1,0 +1,36 @@
+run:
+  name: "overfit64_cnn_transformer"
+  output_dir: "results"
+
+seed: 42
+
+data:
+  processed_dir: "03-development/datasets/TC11_CROHME23/processed"
+  train_split: "train"
+  valid_split: "train"
+  batch_size: 8
+  num_workers: 0
+  max_width: 512
+  target_height: 128
+  invert: false
+  max_decode_len: 256
+
+  limit_train: 64
+  limit_valid: 64
+
+model:
+  decoder_type: "transformer"
+  d_model: 256
+  n_heads: 4
+  n_layers: 4
+  ff_dim: 1024
+  dropout: 0.1
+  max_len: 256
+
+train:
+  epochs: 60
+  lr: 0.0005
+  weight_decay: 0.0
+  grad_clip: 1.0
+  device: "auto"
+  label_smoothing: 0.0

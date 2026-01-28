@@ -12,6 +12,7 @@ from torch.utils.data import Dataset
 
 from src.data.tokenizer import CharTokenizer
 from src.data.transforms import DefaultImageTransform, ImageTransformConfig
+from src.utils.latex_norm import normalize_latex_label
 
 
 @dataclass
@@ -35,10 +36,12 @@ class CROHMEProcessedDataset(Dataset):
         debug_print: bool = False,
         debug_limit: int = 5,
         warn_unk: bool = True,
+        normalize_labels: bool = True,
     ):
         self.cfg = cfg
         self.tokenizer = tokenizer
         self.processed_dir = Path(cfg.processed_dir)
+        self.normalize_labels = normalize_labels
 
         if cfg.split not in ("train", "valid", "test"):
             raise ValueError("split must be one of: train, valid, test")
@@ -59,6 +62,11 @@ class CROHMEProcessedDataset(Dataset):
                 lb = r.get("label") or r.get("latex")
                 if not fn or lb is None:
                     continue
+
+                lb = lb.strip()
+                if self.normalize_labels:
+                    lb = normalize_latex_label(lb)
+
                 self.rows.append((fn, lb))
 
         self.transform = DefaultImageTransform(img_tf_cfg)
