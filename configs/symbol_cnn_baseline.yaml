@@ -1,0 +1,23 @@
+run:
+  name: "crohme_symbol_cnn_baseline_day12"
+  output_dir: "results"
+
+seed: 42
+
+data:
+  train_images_dir: "03-development/datasets/TC11_CROHME23/segmented/symbols_train_images"
+  train_labels_csv:  "03-development/datasets/TC11_CROHME23/segmented/symbols_train_labels.csv"
+
+  valid_images_dir: "03-development/datasets/TC11_CROHME23/segmented/symbols_valid_images"
+  valid_labels_csv:  "03-development/datasets/TC11_CROHME23/segmented/symbols_valid_labels.csv"
+
+  image_size: 64
+  batch_size: 256
+  num_workers: 0
+  invert: false
+
+train:
+  epochs: 15
+  lr: 0.001
+  weight_decay: 0.0001
+  device: "auto"
