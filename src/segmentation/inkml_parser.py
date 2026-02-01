@@ -12,6 +12,7 @@ class SymbolSeg:
     symbol: str
     trace_ids: List[int]
     group_id: str | None = None
+    href: str | None = None   # NEW: link to MathML token id (e.g., "x_1", "cos_2")
 
 
 def _ns(tag: str, ns: str) -> str:
@@ -30,21 +31,37 @@ def _get_inkml_namespace(root: ET.Element) -> str:
     return ""
 
 
+def _get_xml_id(elem: ET.Element) -> Optional[str]:
+    """
+    Read xml:id correctly (ElementTree stores it under the XML namespace).
+    """
+    # xml namespace for xml:id
+    xml_ns = "http://www.w3.org/XML/1998/namespace"
+    if f"{{{xml_ns}}}id" in elem.attrib:
+        return elem.attrib.get(f"{{{xml_ns}}}id")
+    # sometimes datasets also store as plain "xml:id" or "id"
+    return elem.attrib.get("xml:id") or elem.attrib.get("id")
+
+
 def parse_inkml_symbols(inkml_path: str | Path) -> Tuple[str, List[SymbolSeg]]:
     """
     Returns:
       ui: string (from <annotation type="UI">)
-      symbols: list of SymbolSeg(symbol, trace_ids)
+      symbols: list of SymbolSeg(symbol, trace_ids, group_id, href)
 
-    Works for CROHME InkML where symbol segmentation is represented as a traceGroup
-    containing nested traceGroups, each with an annotation (truth) = symbol and traceView refs.
+    CROHME InkML:
+      - symbols live in nested traceGroups
+      - each symbol traceGroup has:
+          <annotation type="truth">SYMBOL</annotation>
+          <traceView traceDataRef="..."/>
+          <annotationXML href="TOKEN_ID"/>   <-- links to MathML token (important!)
     """
     inkml_path = Path(inkml_path)
     tree = ET.parse(str(inkml_path))
     root = tree.getroot()
 
     ns = _get_inkml_namespace(root)
-    # If namespace exists, use namespaced tags, else plain.
+
     def T(name: str) -> str:
         return _ns(name, ns) if ns else name
 
@@ -55,8 +72,7 @@ def parse_inkml_symbols(inkml_path: str | Path) -> Tuple[str, List[SymbolSeg]]:
             ui = (ann.text or "").strip()
             break
 
-    # 2) Find a "segmentation root" traceGroup.
-    # CROHME sometimes labels it as "Segmentation" or "Closest Strk" etc.
+    # 2) Find segmentation root traceGroup
     segmentation_keywords = {
         "segmentation",
         "closest strk",
@@ -67,7 +83,6 @@ def parse_inkml_symbols(inkml_path: str | Path) -> Tuple[str, List[SymbolSeg]]:
 
     seg_root: Optional[ET.Element] = None
 
-    # scan all traceGroups, find one whose *direct* annotation truth is a known segmentation label
     for tg in root.findall(f".//{T('traceGroup')}"):
         ann = tg.find(T("annotation"))
         if ann is None:
@@ -79,20 +94,18 @@ def parse_inkml_symbols(inkml_path: str | Path) -> Tuple[str, List[SymbolSeg]]:
             seg_root = tg
             break
 
-    # If we didn't find via keyword, fallback: choose the deepest traceGroup that contains nested traceGroups
-    # and has child traceGroups with symbol annotations.
+    # fallback: choose a traceGroup that contains child traceGroups with short truth labels
     if seg_root is None:
         for tg in root.findall(f".//{T('traceGroup')}"):
             child_tgs = tg.findall(T("traceGroup"))
             if not child_tgs:
                 continue
-            # if any child traceGroup has an annotation truth that is 1–3 chars (likely symbol)
             for child in child_tgs:
                 ann = child.find(T("annotation"))
                 if ann is None or ann.attrib.get("type") != "truth":
                     continue
                 sym = (ann.text or "").strip()
-                if sym and len(sym) <= 5:  # heuristic: symbols are short
+                if sym and len(sym) <= 8:
                     seg_root = tg
                     break
             if seg_root is not None:
@@ -107,6 +120,7 @@ def parse_inkml_symbols(inkml_path: str | Path) -> Tuple[str, List[SymbolSeg]]:
         ann = sym_group.find(T("annotation"))
         if ann is None or ann.attrib.get("type") != "truth":
             continue
+
         sym = (ann.text or "").strip()
         if not sym:
             continue
@@ -121,12 +135,24 @@ def parse_inkml_symbols(inkml_path: str | Path) -> Tuple[str, List[SymbolSeg]]:
             except ValueError:
                 pass
 
+        # NEW: grab MathML link from annotationXML href
+        href = None
+        ax = sym_group.find(T("annotationXML"))
+        if ax is not None:
+            href = ax.attrib.get("href")
+            if href:
+                href = href.strip()
+                # some files may prefix href with '#'
+                if href.startswith("#"):
+                    href = href[1:]
+
         if trace_ids:
             symbols.append(
                 SymbolSeg(
                     symbol=sym,
                     trace_ids=trace_ids,
-                    group_id=sym_group.attrib.get("xml:id") or sym_group.attrib.get("id"),
+                    group_id=_get_xml_id(sym_group),
+                    href=href,
                 )
             )
 
