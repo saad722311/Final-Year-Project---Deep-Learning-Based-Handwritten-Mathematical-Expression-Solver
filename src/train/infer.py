@@ -1,6 +1,9 @@
 # src/train/infer.py
 from __future__ import annotations
 
+import json
+from src.data.tokenizer import CharTokenizer, LatexTokenizer
+
 import argparse
 import re
 from pathlib import Path
@@ -9,7 +12,7 @@ import torch
 from torch.utils.data import DataLoader
 import yaml
 
-from src.data.tokenizer import CharTokenizer
+from src.data.tokenizer import load_tokenizer_auto  # ✅ changed
 from src.data.datasets import CROHMEProcessedConfig, CROHMEProcessedDataset
 from src.data.transforms import ImageTransformConfig
 from src.data.collate import HMERBatchCollator
@@ -57,7 +60,6 @@ _WS = re.compile(r"\s+")
 
 
 def normalize_latex(s: str) -> str:
-    """Light canonicalization (avoid EM=0 due to spaces/$)."""
     s = s.strip()
     if len(s) >= 2 and s[0] == "$" and s[-1] == "$":
         s = s[1:-1].strip()
@@ -74,12 +76,7 @@ def count_norm_exact(gt: list[str], pred: list[str]) -> int:
 
 
 def token_accuracy_from_logits(logits: torch.Tensor, targets: torch.Tensor, pad_id: int) -> tuple[int, int]:
-    """
-    logits: (B,L,V)
-    targets: (B,L)
-    Returns (correct_tokens, total_tokens) ignoring PAD.
-    """
-    pred = logits.argmax(dim=-1)  # (B,L)
+    pred = logits.argmax(dim=-1)
     mask = (targets != pad_id)
     correct = ((pred == targets) & mask).sum().item()
     total = mask.sum().item()
@@ -87,10 +84,6 @@ def token_accuracy_from_logits(logits: torch.Tensor, targets: torch.Tensor, pad_
 
 
 def brace_balance_ok(s: str) -> bool:
-    """
-    Simple structural sanity check (parentheses/braces/brackets).
-    Not LaTeX-aware, but very useful to quantify "broken structure".
-    """
     pairs = {")": "(", "}": "{", "]": "["}
     stack: list[str] = []
     for ch in s:
@@ -104,9 +97,6 @@ def brace_balance_ok(s: str) -> bool:
 
 
 def pred_len(ids: list[int], eos_id: int, pad_id: int) -> int:
-    """
-    Count tokens until EOS (included), else until first PAD.
-    """
     n = 0
     for t in ids:
         if t == pad_id:
@@ -132,16 +122,15 @@ def main():
     ap.add_argument("--max_eval", type=int, default=None)
     ap.add_argument("--print_every", type=int, default=50)
 
-    # decoding controls
     ap.add_argument("--decode", type=str, default="greedy", choices=["greedy", "beam"])
     ap.add_argument("--beam_size", type=int, default=5)
     ap.add_argument("--alpha", type=float, default=0.6)
     ap.add_argument("--min_len", type=int, default=1)
     ap.add_argument("--repetition_penalty", type=float, default=1.10)
     ap.add_argument("--no_repeat_ngram_size", type=int, default=3)
-    ap.add_argument("--forbid_unk", action="store_true", help="Forbid UNK during decoding")
+    ap.add_argument("--forbid_unk", action="store_true")
 
-    ap.add_argument("--no_teacher_metrics", action="store_true", help="Skip teacher-forcing token acc (debug only)")
+    ap.add_argument("--no_teacher_metrics", action="store_true")
     args = ap.parse_args()
 
     cfg = yaml.safe_load(Path(args.config).read_text())
@@ -153,8 +142,15 @@ def main():
     output_dir = Path(cfg["run"]["output_dir"]) / run_name
 
     tok_path = output_dir / "tokenizer.json"
-    tokenizer = CharTokenizer.load(tok_path)
-    print(f"Loaded tokenizer. Vocab size: {tokenizer.vocab_size}")
+    obj = json.loads(tok_path.read_text(encoding="utf-8"))
+    tok_type = str(obj.get("type", "char")).lower()
+
+    if tok_type == "latex":
+        tokenizer = LatexTokenizer.load(tok_path)
+    else:
+        tokenizer = CharTokenizer.load(tok_path)
+
+    print(f"Loaded tokenizer type={tok_type}. Vocab size: {tokenizer.vocab_size}")
 
     processed_dir = Path(cfg["data"]["processed_dir"])
     split = args.split or cfg["data"].get("valid_split", "valid")
@@ -193,7 +189,6 @@ def main():
         unk_id=tokenizer.unk_id,
         encoder_d_model=int(cfg["model"]["d_model"]),
         decoder_hidden=int(cfg["model"].get("hidden_size", 256)),
-        # supports transformer too
         decoder_type=str(cfg["model"].get("decoder_type", "lstm")),
         n_heads=int(cfg["model"].get("n_heads", 4)),
         n_layers=int(cfg["model"].get("n_layers", 4)),
@@ -217,7 +212,6 @@ def main():
     tok_correct = 0
     tok_total = 0
 
-    # ✅ Day 8 diagnostics
     brace_ok = 0
     len_sum = 0
 
@@ -233,14 +227,12 @@ def main():
         gts = batch["labels"]
         filenames = batch["filenames"]
 
-        # Teacher-forcing token accuracy
         if not args.no_teacher_metrics:
             logits = model(images=images, input_ids=input_ids, image_widths=image_widths)
             c, t = token_accuracy_from_logits(logits, target_ids, pad_id=tokenizer.pad_id)
             tok_correct += c
             tok_total += t
 
-        # Decode
         pred_ids = model.generate(
             images,
             image_widths=image_widths,
@@ -261,7 +253,6 @@ def main():
             nem_correct += count_norm_exact(gts, preds)
             total_samples += len(gts)
 
-            # ✅ Day 8 diagnostics accumulation
             for ids, s in zip(pred_ids_list, preds):
                 if brace_balance_ok(s):
                     brace_ok += 1
@@ -282,7 +273,6 @@ def main():
                     f"braceOK={br:.2f}% avgLen={avg_len:.1f}"
                 )
 
-        # Print samples
         for i in range(len(gts)):
             if printed >= args.num_samples:
                 break

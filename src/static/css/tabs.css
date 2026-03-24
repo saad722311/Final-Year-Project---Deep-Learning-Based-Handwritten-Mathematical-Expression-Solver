@@ -1,0 +1,380 @@
+/* tabs.css - Tab navigation and experiment-specific styles - CLEAN ACADEMIC THEME */
+
+/* TAB NAVIGATION */
+.tab-navigation {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    background: white;
+    padding: 15px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(44, 62, 80, 0.15);
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 15px 20px;
+    border: 2px solid #BDC3C7;
+    border-radius: 10px;
+    background: white;
+    cursor: pointer;
+    font-size: 1.1em;
+    font-weight: 600;
+    transition: all 0.3s;
+    color: #7F8C8D;
+}
+
+.tab-btn:hover {
+    background: #ECF0F1;
+    border-color: #3498DB;
+    transform: translateY(-2px);
+}
+
+.tab-btn.active {
+    background: linear-gradient(135deg, #3498DB 0%, #2C3E50 100%);
+    color: white;
+    border-color: #2C3E50;
+}
+
+/* TAB CONTENT */
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* EXPERIMENT HEADERS */
+.experiment-header {
+    background: white;
+    padding: 25px;
+    border-radius: 15px;
+    margin-bottom: 20px;
+    box-shadow: 0 10px 30px rgba(44, 62, 80, 0.15);
+    text-align: center;
+    border-top: 4px solid #3498DB;
+}
+
+.experiment-header h2 {
+    margin: 0 0 10px 0;
+    color: #2C3E50;
+}
+
+.experiment-header p {
+    margin: 0;
+    color: #7F8C8D;
+    font-size: 1.05em;
+}
+
+/* TAB 2: DRAW & LEARN */
+.draw-learn-container {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(44, 62, 80, 0.15);
+}
+
+.canvas-section-learn {
+    margin-bottom: 30px;
+}
+
+.canvas-section-learn h3 {
+    color: #2C3E50;
+    margin-bottom: 15px;
+}
+
+.canvas-container {
+    background: white;
+    border: 3px solid #3498DB;
+    border-radius: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 15px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 15px rgba(52, 152, 219, 0.2);
+}
+
+#drawingCanvasLearn {
+    cursor: crosshair;
+    border-radius: 5px;
+    background: white;
+    touch-action: none;
+}
+
+.canvas-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+}
+
+.control-btn {
+    padding: 14px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1em;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-weight: 600;
+}
+
+.clear-btn {
+    background: #E74C3C;
+    color: white;
+}
+
+.clear-btn:hover {
+    background: #C0392B;
+    transform: translateY(-2px);
+}
+
+.undo-btn {
+    background: #F39C12;
+    color: white;
+}
+
+.undo-btn:hover {
+    background: #D68910;
+    transform: translateY(-2px);
+}
+
+.test-drawn-btn {
+    background: linear-gradient(135deg, #1ABC9C 0%, #16A085 100%);
+    color: white;
+}
+
+.test-drawn-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(26, 188, 156, 0.4);
+}
+
+.predictions-section {
+    margin: 30px 0;
+    padding: 25px;
+    background: #ECF0F1;
+    border-radius: 12px;
+}
+
+.predictions-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.prediction-card {
+    background: white;
+    padding: 15px;
+    border-radius: 10px;
+    border: 2px solid #BDC3C7;
+    text-align: center;
+}
+
+.prediction-label {
+    font-weight: bold;
+    margin-bottom: 10px;
+    font-size: 0.95em;
+    color: #2C3E50;
+}
+
+.prediction-latex {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+    color: #2C3E50;
+    margin-bottom: 10px;
+    padding: 8px;
+    background: #ECF0F1;
+    border-radius: 5px;
+}
+
+.prediction-render {
+    min-height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2em;
+}
+
+.confirmation-section {
+    margin-top: 30px;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+}
+
+.confirmation-section h3 {
+    color: #2C3E50;
+    margin-bottom: 15px;
+}
+
+.confirmation-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.radio-option {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    background: #ECF0F1;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.radio-option:hover {
+    background: #D5DBDB;
+}
+
+.radio-option input[type="radio"] {
+    margin-right: 10px;
+    cursor: pointer;
+}
+
+.radio-option span {
+    font-weight: 500;
+    color: #2C3E50;
+}
+
+.explain-btn {
+    width: 100%;
+    padding: 18px;
+    background: linear-gradient(135deg, #1ABC9C 0%, #16A085 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 1.2em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.explain-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(26, 188, 156, 0.4);
+}
+
+.explain-btn:disabled {
+    background: #BDC3C7;
+    cursor: not-allowed;
+}
+
+/* TAB 3: LATEX TUTOR */
+.tutor-container {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(44, 62, 80, 0.15);
+}
+
+.input-section {
+    margin-bottom: 30px;
+}
+
+.input-section h3 {
+    color: #2C3E50;
+    margin-bottom: 15px;
+}
+
+.latex-input {
+    width: 100%;
+    padding: 15px;
+    font-size: 1.1em;
+    font-family: 'Courier New', monospace;
+    border: 2px solid #BDC3C7;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+.latex-input:focus {
+    outline: none;
+    border-color: #3498DB;
+}
+
+.preview-section {
+    background: #ECF0F1;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+.preview-label {
+    font-weight: bold;
+    color: #7F8C8D;
+    margin-bottom: 10px;
+    font-size: 0.9em;
+}
+
+.preview-box {
+    background: white;
+    padding: 25px;
+    border-radius: 8px;
+    min-height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4em;
+    border: 2px solid #BDC3C7;
+}
+
+.explain-btn-tutor {
+    width: 100%;
+    padding: 18px;
+    background: linear-gradient(135deg, #3498DB 0%, #2C3E50 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 1.2em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.explain-btn-tutor:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+}
+
+/* EXAMPLES */
+.examples-section {
+    margin-top: 30px;
+    padding: 20px;
+    background: #ECF0F1;
+    border-radius: 10px;
+}
+
+.examples-section h4 {
+    color: #2C3E50;
+    margin-bottom: 15px;
+}
+
+.example-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.example-chip {
+    padding: 10px 15px;
+    background: white;
+    border: 2px solid #3498DB;
+    border-radius: 20px;
+    cursor: pointer;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+    font-weight: 500;
+    color: #2C3E50;
+    transition: all 0.2s;
+    box-shadow: 0 2px 5px rgba(52, 152, 219, 0.2);
+}
+
+.example-chip:hover {
+    background: #3498DB;
+    color: white;
+    border-color: #2C3E50;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(52, 152, 219, 0.4);
+}

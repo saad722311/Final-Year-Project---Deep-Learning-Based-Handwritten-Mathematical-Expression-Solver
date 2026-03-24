@@ -1,0 +1,341 @@
+/* main.css - Base styles for HMER demo - CLEAN ACADEMIC THEME */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #ECF0F1 0%, #BDC3C7 100%);
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.container {
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+.header {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    margin-bottom: 20px;
+    box-shadow: 0 10px 30px rgba(44, 62, 80, 0.15);
+    text-align: center;
+    border-top: 4px solid #2C3E50;
+}
+
+h1 {
+    color: #2C3E50;
+    margin-bottom: 8px;
+    font-size: 2em;
+}
+
+.subtitle {
+    color: #7F8C8D;
+    font-size: 0.95em;
+}
+
+/* Model Summary Cards */
+.models-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.model-summary-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 8px 20px rgba(44, 62, 80, 0.12);
+    transition: transform 0.2s;
+}
+
+.model-summary-card:hover {
+    transform: translateY(-5px);
+}
+
+.model-summary-card.lstm { border-top: 4px solid #3498DB; }
+.model-summary-card.transformer { border-top: 4px solid #1ABC9C; }
+.model-summary-card.token-aware { border-top: 4px solid #E74C3C; }
+
+.model-name {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #2C3E50;
+    margin-bottom: 8px;
+}
+
+.model-arch {
+    color: #7F8C8D;
+    font-size: 0.8em;
+    margin-bottom: 15px;
+    font-style: italic;
+    min-height: 40px;
+}
+
+.metrics-compact {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.metric-compact {
+    background: #ECF0F1;
+    padding: 12px;
+    border-radius: 6px;
+    text-align: center;
+}
+
+.metric-compact.best { background: #D5F4E6; }
+
+.metric-label-small {
+    font-size: 0.7em;
+    color: #7F8C8D;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+}
+
+.metric-value-small {
+    font-size: 1.3em;
+    font-weight: bold;
+    color: #3498DB;
+}
+
+.metric-compact.best .metric-value-small { color: #1ABC9C; }
+
+/* Test Section */
+.test-section {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 10px 30px rgba(44, 62, 80, 0.15);
+}
+
+button {
+    width: 100%;
+    padding: 18px;
+    border: none;
+    border-radius: 10px;
+    font-size: 1.2em;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-weight: 600;
+    background: linear-gradient(135deg, #3498DB 0%, #2C3E50 100%);
+    color: white;
+    margin-bottom: 20px;
+}
+
+button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(52, 152, 219, 0.4);
+}
+
+button:disabled {
+    background: #BDC3C7;
+    cursor: not-allowed;
+}
+
+/* Loading */
+.loading {
+    display: none;
+    text-align: center;
+    padding: 40px;
+}
+
+.loading.active { display: block; }
+
+.spinner {
+    border: 5px solid #ECF0F1;
+    border-top: 5px solid #3498DB;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Results */
+.results {
+    display: none;
+}
+
+.results.show { display: block; }
+
+.image-section {
+    background: #ECF0F1;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.section-label {
+    font-weight: bold;
+    color: #2C3E50;
+    margin-bottom: 12px;
+    font-size: 0.9em;
+    text-transform: uppercase;
+}
+
+.dataset-image {
+    max-width: 100%;
+    max-height: 200px;
+    border: 2px solid #BDC3C7;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    box-shadow: 0 4px 10px rgba(44, 62, 80, 0.1);
+}
+
+.filename {
+    color: #7F8C8D;
+    font-size: 0.85em;
+}
+
+.ground-truth-section {
+    background: #D5F4E6;
+    border-radius: 10px;
+    padding: 18px;
+    margin-bottom: 20px;
+    border-left: 5px solid #1ABC9C;
+}
+
+.latex-code {
+    background: white;
+    padding: 12px;
+    border-radius: 6px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.95em;
+    margin-top: 8px;
+    word-wrap: break-word;
+    border: 1px solid #BDC3C7;
+}
+
+.latex-render {
+    background: white;
+    padding: 25px;
+    border-radius: 8px;
+    text-align: center;
+    min-height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4em;
+    margin-top: 10px;
+    border: 1px solid #BDC3C7;
+}
+
+/* Comparison Grid */
+.comparison-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.model-prediction {
+    background: #ECF0F1;
+    border-radius: 10px;
+    padding: 18px;
+    transition: transform 0.2s;
+}
+
+.model-prediction:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(44, 62, 80, 0.1);
+}
+
+.model-prediction.lstm { border-left: 5px solid #3498DB; }
+.model-prediction.transformer { border-left: 5px solid #1ABC9C; }
+.model-prediction.token-aware { border-left: 5px solid #E74C3C; }
+
+.prediction-header {
+    font-weight: bold;
+    color: #2C3E50;
+    margin-bottom: 12px;
+    font-size: 1em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.model-icon { font-size: 1.2em; }
+
+.status-indicator {
+    padding: 10px;
+    border-radius: 6px;
+    text-align: center;
+    font-weight: bold;
+    margin-top: 12px;
+    font-size: 0.9em;
+}
+
+.status-indicator.correct {
+    background: #D5F4E6;
+    color: #16A085;
+}
+
+.status-indicator.incorrect {
+    background: #FADBD8;
+    color: #C0392B;
+}
+
+.metrics-comparison {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.metric-box {
+    background: white;
+    padding: 10px;
+    border-radius: 6px;
+    text-align: center;
+    border: 1px solid #BDC3C7;
+}
+
+.metric-box-label {
+    font-size: 0.7em;
+    color: #7F8C8D;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+}
+
+.metric-box-value {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #3498DB;
+}
+
+/* Badges */
+.winner-badge {
+    display: inline-block;
+    background: #1ABC9C;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.7em;
+    margin-left: 8px;
+    font-weight: bold;
+}
+
+.novel-badge {
+    display: inline-block;
+    background: #E74C3C;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.7em;
+    margin-left: 8px;
+    font-weight: bold;
+}

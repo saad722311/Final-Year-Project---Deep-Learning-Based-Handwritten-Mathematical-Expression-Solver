@@ -67,7 +67,7 @@ def main():
     label_vocab = build_label_vocab(args.train_jsonl, max_items=0)
     n_labels = len(label_vocab)
 
-    feat_dim = int(meta.get("feat_dim", 13))
+    feat_dim = int(meta.get("feat_dim", 16))
 
     ckpt = torch.load(args.ckpt, map_location="cpu")
     model = EdgeMLP(n_labels=n_labels, n_edge_types=n_edge_types, feat_dim=feat_dim)

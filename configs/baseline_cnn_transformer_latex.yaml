@@ -1,0 +1,41 @@
+run:
+  name: "crohme_cnn_transformer_latex_v1"
+  output_dir: "results"
+
+seed: 42
+
+data:
+  processed_dir: "03-development/datasets/TC11_CROHME23/processed"
+  train_split: "train"
+  valid_split: "valid"
+  batch_size: 12
+  num_workers: 0
+  max_width: 512
+  target_height: 128
+  invert: false
+  max_decode_len: 256
+
+tokenizer:
+  mode: "latex"     # ✅ IMPORTANT
+  min_freq: 1
+  normalize: true
+
+model:
+  type: "cnn_transformer"
+  decoder_type: "transformer"
+
+  d_model: 256
+  n_heads: 4
+  n_layers: 4
+  ff_dim: 1024
+  dropout: 0.2
+  max_len: 256
+
+train:
+  epochs: 20
+  lr: 0.0003
+  weight_decay: 0.01
+  grad_clip: 1.0
+  max_batches_per_epoch: null
+  device: "auto"
+  label_smoothing: 0.1

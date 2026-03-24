@@ -14,7 +14,8 @@ import yaml
 from src.utils.seed import seed_everything
 from src.utils.checkpoints import save_checkpoint
 
-from src.data.tokenizer import CharTokenizer
+# ✅ updated import
+from src.data.tokenizer import build_from_labels_csv, CharTokenizer, LatexTokenizer
 from src.data.datasets import CROHMEProcessedConfig, CROHMEProcessedDataset
 from src.data.transforms import ImageTransformConfig
 from src.data.collate import HMERBatchCollator  # picklable collator (no lambda)
@@ -45,7 +46,7 @@ def run_epoch(
     pad_id: int,
     grad_clip: float | None = None,
     max_batches: int | None = None,
-    label_smoothing: float = 0.0,  # ✅ passed in from main()
+    label_smoothing: float = 0.0,
 ) -> float:
     is_train = optimizer is not None
     model.train(is_train)
@@ -66,11 +67,8 @@ def run_epoch(
         input_ids = batch["input_ids"].to(device)
         target_ids = batch["target_ids"].to(device)
 
-        # Forward -> logits
         logits = model(images=images, input_ids=input_ids, image_widths=image_widths)  # (B,L,V)
 
-        # Cross entropy (ignore PAD)
-        # logits: (B,L,V) -> (B,V,L) for CE
         loss = nn.functional.cross_entropy(
             logits.transpose(1, 2),
             target_ids,
@@ -105,13 +103,11 @@ def main():
     output_dir = Path(cfg["run"]["output_dir"]) / run_name
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Save a copy of config for reproducibility
     (output_dir / "config.yaml").write_text(yaml.safe_dump(cfg, sort_keys=False))
 
     device = get_device(cfg["train"].get("device", "auto"))
     print(f"Device: {device}")
 
-    # ✅ label smoothing (train only). Keep val at 0.0 for "true" CE.
     train_label_smoothing = float(cfg["train"].get("label_smoothing", 0.0))
 
     # -------------------
@@ -120,9 +116,23 @@ def main():
     processed_dir = Path(cfg["data"]["processed_dir"])
     train_labels_csv = processed_dir / "train_labels.csv"
 
-    tokenizer = CharTokenizer.build_from_labels_csv(str(train_labels_csv))
+    tok_cfg = cfg.get("tokenizer", {})
+    tok_mode = str(tok_cfg.get("mode", "latex")).lower()     # ✅ default latex
+    tok_min_freq = int(tok_cfg.get("min_freq", 1))
+    tok_normalize = bool(tok_cfg.get("normalize", True))
+
+    tokenizer = build_from_labels_csv(
+        str(train_labels_csv),
+        text_col="label",
+        min_freq=tok_min_freq,
+        normalize=tok_normalize,
+        mode=tok_mode,
+    )
     tokenizer.save(output_dir / "tokenizer.json")
+
+    print(f"Tokenizer mode: {tok_mode}")
     print(f"Vocab size: {tokenizer.vocab_size}")
+    print(f"pad={tokenizer.pad_id} sos={tokenizer.sos_id} eos={tokenizer.eos_id} unk={tokenizer.unk_id}")
 
     pad_id = tokenizer.pad_id
     collator = HMERBatchCollator(pad_id=pad_id)
@@ -136,7 +146,6 @@ def main():
         invert=bool(cfg["data"].get("invert", False)),
     )
 
-    # Optional debug toggles (only affect printing, not training)
     debug_print = bool(cfg.get("debug", {}).get("dataset_print", False))
     debug_limit = int(cfg.get("debug", {}).get("dataset_print_limit", 5))
     warn_unk = bool(cfg.get("debug", {}).get("warn_unk", True))
@@ -160,15 +169,13 @@ def main():
         ),
         tokenizer=tokenizer,
         img_tf_cfg=tf_cfg,
-        debug_print=False,  # keep valid clean
+        debug_print=False,
         debug_limit=0,
         warn_unk=warn_unk,
     )
 
-    # ✅ TRUE LIMITING: restrict dataset size for real overfit sanity check
     limit_train = cfg["data"].get("limit_train", None)
     limit_valid = cfg["data"].get("limit_valid", None)
-
     if limit_train is not None:
         train_ds = Subset(train_ds, list(range(int(limit_train))))
     if limit_valid is not None:
@@ -205,7 +212,6 @@ def main():
         unk_id=tokenizer.unk_id,
         encoder_d_model=int(cfg["model"]["d_model"]),
         decoder_hidden=int(cfg["model"].get("hidden_size", 256)),
-        # supports transformer too
         decoder_type=str(cfg["model"].get("decoder_type", "lstm")),
         n_heads=int(cfg["model"].get("n_heads", 4)),
         n_layers=int(cfg["model"].get("n_layers", 4)),
@@ -249,7 +255,7 @@ def main():
             pad_id=pad_id,
             grad_clip=grad_clip,
             max_batches=max_batches,
-            label_smoothing=train_label_smoothing,  # ✅ train smoothing
+            label_smoothing=train_label_smoothing,
         )
 
         with torch.no_grad():
@@ -261,13 +267,12 @@ def main():
                 pad_id=pad_id,
                 grad_clip=None,
                 max_batches=max_batches,
-                label_smoothing=0.0,  # ✅ keep validation CE "true"
+                label_smoothing=0.0,
             )
 
         dt = time.time() - t0
         print(f"Epoch {epoch}/{epochs} | train_loss={train_loss:.4f} | valid_loss={valid_loss:.4f} | {dt:.1f}s")
 
-        # save last
         save_checkpoint(
             path=output_dir / "last.pt",
             model=model,
@@ -276,7 +281,6 @@ def main():
             step=global_step,
         )
 
-        # save best
         if valid_loss < best_val:
             best_val = valid_loss
             save_checkpoint(

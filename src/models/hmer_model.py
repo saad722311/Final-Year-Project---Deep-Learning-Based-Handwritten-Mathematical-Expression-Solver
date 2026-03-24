@@ -1,138 +1,187 @@
-# src/models/hmer_model.py
-from __future__ import annotations
+"""
+Complete HMER Model
+===================
+Combines CNN Encoder, Attention, and LSTM Decoder into a complete
+end-to-end model for Handwritten Mathematical Expression Recognition.
+"""
 
 import torch
 import torch.nn as nn
 
-from src.models.cnn_encoder import CNNEncoder, CNNEncoderConfig
-from src.models.decoder_lstm import LSTMDecoder, LSTMDecoderConfig
-
-# Optional transformer decoder (Day 7)
-try:
-    from src.models.decoder_transformer import TransformerDecoder, TransformerDecoderConfig
-except Exception:
-    TransformerDecoder = None
-    TransformerDecoderConfig = None
-
 
 class HMERModel(nn.Module):
-    def __init__(
-        self,
-        vocab_size: int,
-        pad_id: int,
-        sos_id: int,
-        eos_id: int,
-        unk_id: int | None = None,
-        encoder_d_model: int = 256,
-        decoder_hidden: int = 256,
-        # ✅ NEW: choose decoder by config
-        decoder_type: str = "lstm",     # "lstm" | "transformer"
-        # transformer params (safe defaults)
-        n_heads: int = 4,
-        n_layers: int = 4,
-        ff_dim: int = 1024,
-        dropout: float = 0.1,
-        max_len: int = 256,
-    ):
-        super().__init__()
-
-        self.pad_id = pad_id
-        self.sos_id = sos_id
-        self.eos_id = eos_id
-        self.unk_id = unk_id
-        self.decoder_type = decoder_type
-
-        self.encoder = CNNEncoder(CNNEncoderConfig(in_channels=1, d_model=encoder_d_model))
-
-        if decoder_type == "transformer":
-            if TransformerDecoder is None or TransformerDecoderConfig is None:
-                raise RuntimeError(
-                    "decoder_type='transformer' but src/models/decoder_transformer.py is missing or failed to import."
-                )
-
-            dec_cfg = TransformerDecoderConfig(
-                vocab_size=vocab_size,
-                pad_id=pad_id,
-                sos_id=sos_id,
-                eos_id=eos_id,
-                unk_id=unk_id,
-                d_model=encoder_d_model,
-                n_heads=n_heads,
-                n_layers=n_layers,
-                ff_dim=ff_dim,
-                dropout=dropout,
-                max_len=max_len,
-            )
-            self.decoder = TransformerDecoder(dec_cfg)
-        else:
-            # default: LSTM decoder (your current baseline)
-            dec_cfg = LSTMDecoderConfig(
-                vocab_size=vocab_size,
-                pad_id=pad_id,
-                sos_id=sos_id,
-                eos_id=eos_id,
-                unk_id=unk_id,
-                d_model=encoder_d_model,
-                emb_dim=encoder_d_model,
-                hidden_size=decoder_hidden,
-                dropout=dropout,
-            )
-            self.decoder = LSTMDecoder(dec_cfg)
-
-    def forward(
-        self,
-        images: torch.Tensor,
-        input_ids: torch.Tensor,
-        image_widths: torch.Tensor | None = None,
-    ) -> torch.Tensor:
+    """
+    Complete HMER model: Image → LaTeX
+    
+    Architecture:
+        Input: [B, 1, 256, 256] grayscale images
+        ↓
+        CNN Encoder (ResNet18)
+        ↓
+        Features: [B, 512, 8, 8]
+        ↓
+        LSTM Decoder with Attention
+        ↓
+        Output: LaTeX token sequences
+    
+    Args:
+        encoder (nn.Module): CNN encoder
+        decoder (nn.Module): LSTM decoder with attention
+        device (str): 'cuda', 'mps', or 'cpu'
+    """
+    
+    def __init__(self, encoder, decoder, device='cpu'):
+        super(HMERModel, self).__init__()
+        
+        self.encoder = encoder
+        self.decoder = decoder
+        self.device = device
+        
+        # Move model to device
+        self.to(device)
+        
+        print(f"\n✓ Complete HMER Model initialized")
+        print(f"  - Device: {device}")
+        print(f"  - Encoder: {encoder.__class__.__name__}")
+        print(f"  - Decoder: {decoder.__class__.__name__}")
+    
+    def forward(self, images, captions, caption_lengths, teacher_forcing_ratio=1.0):
         """
-        Training forward (teacher forcing).
+        Forward pass (training with optional scheduled sampling).
+        
+        Args:
+            images (torch.Tensor): Input images [B, 1, 256, 256]
+            captions (torch.Tensor): Ground truth token IDs [B, max_len]
+            caption_lengths (torch.Tensor): Actual lengths [B]
+            teacher_forcing_ratio (float): Probability of using ground truth (default: 1.0)
+        
+        Returns:
+            predictions (torch.Tensor): [B, max_len, vocab_size]
+            alphas (torch.Tensor): [B, max_len, num_pixels]
         """
-        memory, memory_mask = self.encoder(images, image_widths=image_widths)
-        logits = self.decoder(input_ids, memory, memory_mask=memory_mask)
-        return logits
-
-    @torch.no_grad()
-    def generate(
-        self,
-        images: torch.Tensor,
-        image_widths: torch.Tensor | None = None,
-        max_len: int = 160,
-        decode: str = "greedy",      # "greedy" | "beam"
-        beam_size: int = 5,
-        alpha: float = 0.6,
-        min_len: int = 1,
-        repetition_penalty: float = 1.10,
-        no_repeat_ngram_size: int = 3,
-        forbid_unk: bool = True,
-    ) -> torch.Tensor:
+        # Encode images
+        encoder_out = self.encoder(images)  # [B, 512, 8, 8]
+        
+        # Decode to LaTeX (with scheduled sampling)
+        predictions, alphas = self.decoder(
+            encoder_out, captions, caption_lengths, 
+            teacher_forcing_ratio=teacher_forcing_ratio
+        )
+        
+        return predictions, alphas
+    
+    def generate_latex(self, image, max_len=50, sos_token=1, eos_token=2, beam_width=1):
         """
-        Decode from images.
+        Generate LaTeX from a single image (inference).
+        
+        Args:
+            image (torch.Tensor): Single image [1, 1, 256, 256]
+            max_len (int): Maximum sequence length
+            sos_token (int): Start token ID
+            eos_token (int): End token ID
+            beam_width (int): Beam width (1 = greedy, >1 = beam search)
+        
+        Returns:
+            tokens (list): Generated token IDs
+            score (float): Log probability (only for beam search)
         """
         self.eval()
-        memory, memory_mask = self.encoder(images, image_widths=image_widths)
+        with torch.no_grad():
+            # Encode image
+            encoder_out = self.encoder(image)
+            
+            if beam_width == 1:
+                # Greedy decoding
+                tokens, alphas = self.decoder.generate(
+                    encoder_out,
+                    max_len=max_len,
+                    sos_token=sos_token,
+                    eos_token=eos_token
+                )
+                return tokens, None
+            else:
+                # Beam search
+                tokens, score = self.decoder.beam_search(
+                    encoder_out,
+                    beam_width=beam_width,
+                    max_len=max_len,
+                    sos_token=sos_token,
+                    eos_token=eos_token
+                )
+                return tokens, score
+    
+    def count_parameters(self):
+        """Count total and trainable parameters."""
+        total = sum(p.numel() for p in self.parameters())
+        trainable = sum(p.numel() for p in self.parameters() if p.requires_grad)
+        return total, trainable
 
-        # LSTM decoder: supports greedy + beam
-        if hasattr(self.decoder, "beam_decode") and decode == "beam":
-            return self.decoder.beam_decode(
-                memory=memory,
-                memory_mask=memory_mask,
-                max_len=max_len,
-                beam_size=beam_size,
-                alpha=alpha,
-                min_len=min_len,
-                repetition_penalty=repetition_penalty,
-                no_repeat_ngram_size=no_repeat_ngram_size,
-                forbid_unk=forbid_unk,
-            )
 
-        # fallback greedy (works for LSTM + Transformer)
-        return self.decoder.greedy_decode(
-            memory=memory,
-            memory_mask=memory_mask,
-            max_len=max_len,
-            min_len=min_len,
-            repetition_penalty=repetition_penalty,
-            no_repeat_ngram_size=no_repeat_ngram_size,
-            forbid_unk=forbid_unk,
-        )
+def create_hmer_model(vocab_size, embed_dim=256, decoder_dim=512, 
+                     encoder_dim=512, attention_dim=512,
+                     encoder_type='resnet', attention_type='bahdanau',
+                     pretrained=True, dropout=0.5, device='cpu'):
+    """
+    Factory function to create complete HMER model.
+    
+    Args:
+        vocab_size (int): Size of vocabulary (346 for MathWriting)
+        embed_dim (int): Token embedding dimension
+        decoder_dim (int): LSTM hidden dimension
+        encoder_dim (int): CNN encoder output dimension
+        attention_dim (int): Attention hidden dimension
+        encoder_type (str): 'resnet' or 'densenet'
+        attention_type (str): 'bahdanau', 'dot_product', or 'adaptive'
+        pretrained (bool): Use pretrained CNN encoder
+        dropout (float): Dropout probability
+        device (str): 'cuda', 'mps', or 'cpu'
+    
+    Returns:
+        HMERModel: Complete model ready for training
+    """
+    # Import components
+    import os
+    import sys
+    
+    # Get the directory where this file is located
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # Add models directory to path if not already there
+    if current_dir not in sys.path:
+        sys.path.insert(0, current_dir)
+    
+    from encoder import create_encoder
+    from attention import create_attention
+    from decoder import LSTMDecoder
+    
+    # Create encoder
+    encoder = create_encoder(encoder_type=encoder_type, pretrained=pretrained)
+    
+    # Get actual encoder dimension
+    if encoder_type == 'densenet':
+        encoder_dim = 1024
+    else:
+        encoder_dim = 512
+    
+    # Create attention
+    attention = create_attention(
+        attention_type=attention_type,
+        encoder_dim=encoder_dim,
+        decoder_dim=decoder_dim,
+        attention_dim=attention_dim
+    )
+    
+    # Create decoder
+    decoder = LSTMDecoder(
+        vocab_size=vocab_size,
+        embed_dim=embed_dim,
+        decoder_dim=decoder_dim,
+        encoder_dim=encoder_dim,
+        attention=attention,
+        dropout=dropout
+    )
+    
+    # Create complete model
+    model = HMERModel(encoder, decoder, device=device)
+    
+    return model

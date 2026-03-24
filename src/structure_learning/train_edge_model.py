@@ -140,7 +140,7 @@ def main():
     model = EdgeMLP(
         n_labels=len(label_vocab),
         n_edge_types=len(EDGE_TYPES),
-        feat_dim=13,  # from pair_features()
+        feat_dim=16,  # from pair_features()
         emb_dim=args.emb_dim,
         hidden=args.hidden,
         dropout=args.dropout,

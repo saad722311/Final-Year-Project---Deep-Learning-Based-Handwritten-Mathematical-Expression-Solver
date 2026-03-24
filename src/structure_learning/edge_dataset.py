@@ -36,21 +36,45 @@ def _iou_1d(a0: float, a1: float, b0: float, b1: float) -> float:
     return inter / union
 
 
+def _is_frac_virtual(n: dict) -> bool:
+    """Heuristic: virtual node that represents a fraction bar/container."""
+    if not n.get("is_virtual"):
+        return False
+    lab = str(n.get("label", "")).upper()
+    # be permissive: your pipeline uses FRAC_* relations so virtual label usually contains FRAC
+    return "FRAC" in lab
+
+
 def pair_features(ni: dict, nj: dict) -> List[float]:
     """
-    Handcrafted features for edge (i -> j).
-    All are cheap + strong baselines for CROHME relations.
+    Robust features for edge (i -> j).
+    FIX: virtual nodes can have w/h ~ 0, which makes dx/dy explode.
+         We normalize using a stable scale based on both nodes.
+
+    C3.3.4 ADD: fraction-aware features:
+      - when source node is a FRAC virtual node, add explicit flags indicating
+        whether target is above or below that fraction bar. This helps FRAC_NUM vs FRAC_DEN.
     """
     xi, yi = _safe(ni.get("cx")), _safe(ni.get("cy"))
     xj, yj = _safe(nj.get("cx")), _safe(nj.get("cy"))
-    wi, hi = max(1e-6, _safe(ni.get("w"))), max(1e-6, _safe(ni.get("h")))
-    wj, hj = max(1e-6, _safe(nj.get("w"))), max(1e-6, _safe(nj.get("h")))
 
-    dx = (xj - xi) / wi
-    dy = (yj - yi) / hi
+    wi, hi = _safe(ni.get("w")), _safe(ni.get("h"))
+    wj, hj = _safe(nj.get("w")), _safe(nj.get("h"))
+
+    # stable normalization (prevents virtual-node blowups)
+    scale_w = max(wi, wj, 1.0)
+    scale_h = max(hi, hj, 1.0)
+
+    dx = (xj - xi) / scale_w
+    dy = (yj - yi) / scale_h
+
+    # clamp (extra safety)
+    dx = max(-10.0, min(10.0, dx))
+    dy = max(-10.0, min(10.0, dy))
+
     dist = math.sqrt(dx * dx + dy * dy)
 
-    # bbox overlaps (helpful for NEXT vs stacked relations)
+    # bbox overlaps
     x0i, x1i = _safe(ni.get("x0")), _safe(ni.get("x1"))
     y0i, y1i = _safe(ni.get("y0")), _safe(ni.get("y1"))
     x0j, x1j = _safe(nj.get("x0")), _safe(nj.get("x1"))
@@ -59,26 +83,39 @@ def pair_features(ni: dict, nj: dict) -> List[float]:
     x_iou = _iou_1d(x0i, x1i, x0j, x1j)
     y_iou = _iou_1d(y0i, y1i, y0j, y1j)
 
-    # relative size
-    wr = wj / wi
-    hr = hj / hi
+    # relative size (safe)
+    wi2 = max(1e-6, wi)
+    hi2 = max(1e-6, hi)
+    wr = max(1e-6, wj) / wi2
+    hr = max(1e-6, hj) / hi2
 
-    # directional indicators
+    # direction flags
     right = 1.0 if xj > xi else 0.0
     left = 1.0 - right
     above = 1.0 if yj < yi else 0.0
     below = 1.0 - above
 
-    # virtual flags
     vi = 1.0 if ni.get("is_virtual") else 0.0
     vj = 1.0 if nj.get("is_virtual") else 0.0
+
+    # --- NEW: fraction-aware cues (only meaningful when i is a FRAC virtual node) ---
+    frac_src = 1.0 if _is_frac_virtual(ni) else 0.0
+    frac_tgt = 1.0 if _is_frac_virtual(nj) else 0.0  # usually 0, but keep for completeness
+    frac_above = 0.0
+    frac_below = 0.0
+    if frac_src and not frac_tgt:
+        if yj < yi:
+            frac_above = 1.0
+        elif yj > yi:
+            frac_below = 1.0
 
     return [
         dx, dy, dist,
         x_iou, y_iou,
         wr, hr,
         right, left, above, below,
-        vi, vj
+        vi, vj,
+        frac_src, frac_above, frac_below
     ]
 
 
@@ -103,36 +140,53 @@ def candidate_pairs(nodes: List[dict], k_right: int = 6, k_any: int = 6) -> List
     """
     Build a small candidate set per graph so we don't classify all N^2 pairs.
 
-    IMPORTANT FIX:
-    Some nodes (especially virtual nodes like FRAC@k) can have cx/cy/w/h missing or None.
-    We use _safe() so float(None) never crashes.
-
-    Strategy:
-      - for each i: take k_right closest nodes to the right (xj>xi) by dx
-      - plus k_any closest overall by euclidean distance in normalized space
+    C3.3.1 FIX (important for fractions):
+      - keeps k_right (good for NEXT)
+      - keeps k_any closest (general)
+      - adds above/below candidates (critical for FRAC_NUM / FRAC_DEN)
+      - keeps virtual-node full-connect safety net
     """
     pairs = set()
     N = len(nodes)
 
-    # Safe geometry cache: (cx, cy, w, h)
+    # Safe geometry cache: (cx, cy, w, h, is_virtual)
     cxy = []
     for n in nodes:
         cx = _safe(n.get("cx"))
         cy = _safe(n.get("cy"))
         w = max(1e-6, _safe(n.get("w")))
         h = max(1e-6, _safe(n.get("h")))
-        cxy.append((cx, cy, w, h))
+        is_virtual = bool(n.get("is_virtual", False))
+        cxy.append((cx, cy, w, h, is_virtual))
 
+    # 1) Always fully-connect virtual nodes (both directions)
+    virtual_idx = [i for i in range(N) if cxy[i][4]]
+    if virtual_idx:
+        for i in virtual_idx:
+            for j in range(N):
+                if i == j:
+                    continue
+                pairs.add((i, j))
+                pairs.add((j, i))
+
+    # vertical candidates budget
+    k_vert = max(1, k_any // 2)  # above and below each get this many
+
+    # 2) Normal top-k for non-virtual nodes (+ vertical mining)
     for i in range(N):
-        xi, yi, wi, hi = cxy[i]
+        xi, yi, wi, hi, vi = cxy[i]
+        if vi:
+            continue  # already fully-connected above
 
         right_cands = []
         any_cands = []
+        above_cands = []
+        below_cands = []
 
         for j in range(N):
             if i == j:
                 continue
-            xj, yj, wj, hj = cxy[j]
+            xj, yj, wj, hj, vj = cxy[j]
 
             dx = (xj - xi) / wi
             dy = (yj - yi) / hi
@@ -142,12 +196,26 @@ def candidate_pairs(nodes: List[dict], k_right: int = 6, k_any: int = 6) -> List
             if xj > xi:
                 right_cands.append((dx, j))
 
+            # vertical mining (fractions/scripts live here)
+            if yj < yi:
+                above_cands.append((abs(dy), j))
+            elif yj > yi:
+                below_cands.append((abs(dy), j))
+
         right_cands.sort(key=lambda t: t[0])
         any_cands.sort(key=lambda t: t[0])
+        above_cands.sort(key=lambda t: t[0])
+        below_cands.sort(key=lambda t: t[0])
 
         for _, j in right_cands[:k_right]:
             pairs.add((i, j))
         for _, j in any_cands[:k_any]:
+            pairs.add((i, j))
+
+        # ensure above/below candidates exist
+        for _, j in above_cands[:k_vert]:
+            pairs.add((i, j))
+        for _, j in below_cands[:k_vert]:
             pairs.add((i, j))
 
     return sorted(pairs)
@@ -205,10 +273,10 @@ class EdgeDataset(Dataset):
                 # gold map: (i,j)->etype
                 gold = {(int(s), int(t)): str(r) for (s, t, r) in edges}
 
-                # candidate pool (safe)
+                # candidate pool
                 cand = candidate_pairs(nodes, k_right=self.k_right, k_any=self.k_any)
 
-                # positives are gold edges that exist in candidate pool; but we also keep gold edges even if not in cand
+                # ensure we don't lose gold edges
                 gold_pairs = set(gold.keys())
                 cand_set = set(cand) | gold_pairs
 
@@ -239,7 +307,6 @@ class EdgeDataset(Dataset):
                     need = self.neg_per_pos * len(pos)
                     take = none_pairs[:need]
                 else:
-                    # graphs with no edges: take small amount
                     take = none_pairs[:10]
 
                 for (i, j) in take:

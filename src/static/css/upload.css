@@ -1,0 +1,190 @@
+/* Upload & Test Tab Styles */
+
+.upload-container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.upload-section {
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    margin-bottom: 30px;
+}
+
+.upload-area {
+    border: 3px dashed #ddd;
+    border-radius: 12px;
+    padding: 40px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: #fafafa;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.upload-area:hover {
+    border-color: #4CAF50;
+    background: #f0f8f0;
+}
+
+.upload-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+.upload-icon {
+    font-size: 4em;
+}
+
+.upload-text {
+    font-size: 1.2em;
+    font-weight: 600;
+    color: #333;
+}
+
+.upload-hint {
+    font-size: 0.9em;
+    color: #666;
+}
+
+.uploaded-preview {
+    max-width: 250px;
+    max-height: 350px;
+    object-fit: contain;
+    display: block;
+    margin: auto;
+}
+
+.upload-controls {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.upload-results-section {
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+}
+
+.result-card {
+    border: 2px solid #4CAF50;
+    border-radius: 12px;
+    padding: 25px;
+    background: #f9fff9;
+}
+
+.result-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    font-size: 1.2em;
+    font-weight: 600;
+}
+
+.model-badge {
+    margin-left: auto;
+    background: #4CAF50;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.75em;
+}
+
+.processed-image-section,
+.prediction-section,
+.render-section {
+    margin-top: 20px;
+}
+
+.processed-image {
+    max-width: 300px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    display: block;
+    margin: 15px auto;
+}
+
+.training-info {
+    margin-top: 30px;
+    padding: 20px;
+    background: #f0f8ff;
+    border-left: 4px solid #2196F3;
+    border-radius: 8px;
+}
+
+.training-info h4 {
+    margin-top: 0;
+    color: #2196F3;
+}
+
+.training-examples {
+    margin-top: 15px;
+}
+
+.training-examples h5 {
+    color: #4CAF50;
+    margin-bottom: 10px;
+}
+
+.training-examples ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.training-examples li {
+    padding: 5px 0;
+}
+
+.model-info-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: #4CAF50;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 25px;
+    margin-top: 10px;
+    font-weight: 600;
+}
+
+.badge-icon {
+    font-size: 1.5em;
+}
+
+.confirm-section {
+    margin-top: 25px;
+    padding: 18px;
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid #e6e6e6;
+}
+
+.confirm-text {
+    margin: 10px 0 15px 0;
+    color: #444;
+}
+
+.confirm-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.correct-section {
+    margin-top: 20px;
+    padding: 18px;
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid #e6e6e6;
+}

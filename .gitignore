@@ -19,6 +19,16 @@ __pycache__/
 # experiment outputs
 results/
 
+# Model checkpoints and training logs (large / generated)
+src/checkpoints/
+src/logs/
+
+# Backup files
+*.backup
+
+# Debug outputs
+debug_*.png
+
 # Documents / templates
 *.docx
 *.pdf

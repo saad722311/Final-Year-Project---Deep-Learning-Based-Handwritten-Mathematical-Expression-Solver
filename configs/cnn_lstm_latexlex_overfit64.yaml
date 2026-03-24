@@ -1,0 +1,47 @@
+# configs/cnn_lstm_latexlex_overfit64.yaml
+
+run:
+  name: "crohme_cnn_lstm_latexlex_overfit64_v1"
+  output_dir: "results"
+
+seed: 42
+
+data:
+  processed_dir: "03-development/datasets/TC11_CROHME23/processed"
+  train_split: "train"
+  valid_split: "valid"
+
+  batch_size: 12
+  num_workers: 0
+
+  max_width: 512
+  target_height: 128
+  invert: false
+
+  # decoding length cap / positional cap
+  max_decode_len: 256
+
+  # ✅ FIRST sanity: true overfit
+  limit_train: 64
+  limit_valid: 64
+
+tokenizer:
+  # IMPORTANT: your train.py must read this and call build_from_labels_csv(..., mode=...)
+  mode: "latex"     # uses latex_lex
+  min_freq: 1
+
+train:
+  epochs: 200        # ✅ overfit test
+  lr: 0.0003
+  weight_decay: 0.01
+  grad_clip: 1.0
+  max_batches_per_epoch: null
+  device: "auto"
+  label_smoothing: 0.0   # ✅ turn off while overfitting
+
+model:
+  type: "cnn_lstm"
+  d_model: 256
+  hidden_size: 512
+  attn_dim: 256
+  dropout: 0.2

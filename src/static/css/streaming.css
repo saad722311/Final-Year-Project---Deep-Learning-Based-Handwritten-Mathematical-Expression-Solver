@@ -1,0 +1,90 @@
+/* streaming.css - Styles for LLM streaming functionality */
+
+/* Typing cursor animation */
+.typing-cursor {
+    display: inline-block;
+    background: #1ABC9C;
+    color: transparent;
+    animation: blink 1s step-end infinite;
+    margin-left: 2px;
+    width: 2px;
+    height: 1.2em;
+    vertical-align: text-bottom;
+}
+
+@keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+}
+
+/* Explanation content area with better formatting */
+.explanation-content {
+    line-height: 2;
+    color: #333;
+    font-size: 1.05em;
+    /* NO max-height - let it expand */
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+}
+
+/* Style markdown-style formatting from LLM */
+.explanation-content strong,
+.explanation-content b {
+    color: #3498DB;
+    font-size: 1.15em;
+    font-weight: 700;
+    display: block;
+    margin-top: 20px;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 2px solid #D5F4E6;
+}
+
+/* Italic formatting for variables and emphasis */
+.explanation-content em,
+.explanation-content i {
+    font-style: italic;
+    color: #555;
+    font-weight: 500;
+}
+
+.explanation-content ul {
+    margin-left: 25px;
+    margin-bottom: 20px;
+    margin-top: 10px;
+}
+
+.explanation-content li {
+    margin-bottom: 10px;
+    line-height: 1.6;
+    padding-left: 5px;
+}
+
+.explanation-content p {
+    margin-bottom: 15px;
+    line-height: 1.8;
+}
+
+.explanation-section {
+    margin-top: 30px;
+    padding: 30px;
+    background: #D5F4E6;
+    border-radius: 12px;
+    border-left: 5px solid #1ABC9C;
+}
+
+.explanation-section h3 {
+    color: #16A085;
+    margin-bottom: 20px;
+    font-size: 1.3em;
+}
+
+.explanation-box {
+    background: white;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    /* Let it expand naturally, no max-height */
+    min-height: 200px;
+}
